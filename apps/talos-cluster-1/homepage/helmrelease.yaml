@@ -21,8 +21,15 @@ spec:
     remediation:
       retries: 3
   values:
-    # RBAC + a service account are required for the Kubernetes widgets and for
-    # auto-discovery of annotated services.
+    # The chart lags the application badly — chart 2.1.0 still ships Homepage
+    # v1.2.0 while upstream is on v2.x — so the image tag is pinned here rather
+    # than inherited from the chart's appVersion. Renovate tracks this line via
+    # the customManager in renovate.json; it cannot see a chart's appVersion.
+    image:
+      # renovate: image=ghcr.io/gethomepage/homepage
+      tag: v2.1.2
+
+    # RBAC + a service account are required for the Kubernetes widgets.
     enableRbac: true
     serviceAccount:
       create: true

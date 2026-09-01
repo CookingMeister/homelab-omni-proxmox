@@ -16,6 +16,20 @@
       "apps/**/*.yaml"
     ]
   },
+  "customManagers": [
+    {
+      "description": "Track container image tags pinned inside HelmRelease values. The flux manager only sees chart versions, so an image pinned to work around a stale chart would otherwise never be updated.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "infrastructure/**/*.yaml",
+        "apps/**/*.yaml"
+      ],
+      "matchStrings": [
+        "#\\s*renovate:\\s*image=(?<depName>\\S+)\\s+tag:\\s*[\"']?(?<currentValue>[^\"'\\s]+)"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ],
   "packageRules": [
     {
       "description": "Patch updates are low risk and can merge themselves. Overridden for Cilium below.",

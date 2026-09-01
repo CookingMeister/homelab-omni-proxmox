@@ -168,6 +168,12 @@ manager, which reads chart versions straight out of the HelmReleases.
 | Cilium (any) | Never automerged, 7-day minimum age, own PR |
 | `clusters/*/flux-system/**` | Ignored |
 
+A `customManagers` regex entry also tracks container images pinned inside HelmRelease
+values, marked with a `# renovate: image=...` comment. This matters because the flux
+manager only sees **chart** versions — an image pinned to work around a stale chart is
+invisible to it otherwise. Homepage is pinned this way: chart `2.1.0` is the newest
+published but still ships application v1.2.0, several releases behind upstream.
+
 Cilium is singled out because it is the CNI and the kube-proxy replacement — a bad
 upgrade takes cluster networking with it. The `flux-system` directory is excluded
 because Flux's own controllers are upgraded by re-running `flux bootstrap`, which
