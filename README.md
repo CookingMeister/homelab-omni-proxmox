@@ -39,7 +39,7 @@ and there are no dedicated worker nodes.
 
 ## Architecture
 
-```
+```text
         Internet
            │
       Cloudflare  (DNS + TLS)
@@ -65,7 +65,7 @@ addresses, so there is no in-cluster ingress controller.
 
 ## Repository layout
 
-```
+```text
 clusters/talos-cluster-1/   Flux entrypoint — Kustomizations for the trees below
 infrastructure/controllers/ Cluster-wide controllers (Cilium, metrics-server)
 infrastructure/configs/     Cluster-wide config depending on those controllers
@@ -138,6 +138,57 @@ http:
 
 Homepage rejects requests whose `Host` header it does not recognise, so any new
 hostname must also be added to `HOMEPAGE_ALLOWED_HOSTS` in its HelmRelease.
+
+## Dashboard
+
+Homepage discovers services from the cluster itself. Annotate a `Service` and it
+appears on the dashboard — no edit to the Homepage config required:
+
+```yaml
+metadata:
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "Hubble UI"
+    gethomepage.dev/description: "eBPF network observability"
+    gethomepage.dev/group: "Cluster"
+    gethomepage.dev/icon: "cilium.png"
+    gethomepage.dev/href: "http://192.168.0.16"
+```
+
+`href` is required here. Homepage can infer a URL from an `Ingress`, but this cluster
+has none — Traefik lives outside it — so discovery runs against `Service` objects and
+the address has to be stated.
+
+Two things this depends on, both already configured: `config.kubernetes.mode: cluster`
+in the HelmRelease, and an `extraClusterRoles` entry granting read on `services`. The
+chart's built-in ClusterRole covers ingresses but **not** services, so without that
+extra rule annotated services are silently never found.
+
+Groups named in `gethomepage.dev/group` should also appear under `layout` in
+`settingsString` to control their order. Anything outside the cluster — Omni, Proxmox —
+is listed statically in the HelmRelease instead.
+
+## Dependency updates
+
+[Renovate](https://docs.renovatebot.com/) raises PRs for Helm chart updates, driven by
+`renovate.json`. It scans `clusters/`, `infrastructure/` and `apps/` with the `flux`
+manager, which reads chart versions straight out of the HelmReleases.
+
+| Update | Behaviour |
+| --- | --- |
+| Patch | Automerged after a 3-day cooling-off period |
+| Minor (metrics-server, homepage) | Grouped into one PR for review |
+| Cilium (any) | Never automerged, 7-day minimum age, own PR |
+| `clusters/*/flux-system/**` | Ignored |
+
+Cilium is singled out because it is the CNI and the kube-proxy replacement — a bad
+upgrade takes cluster networking with it. The `flux-system` directory is excluded
+because Flux's own controllers are upgraded by re-running `flux bootstrap`, which
+rewrites `gotk-components.yaml`; letting Renovate edit it too would put the two in
+conflict.
+
+Renovate opens a **Dependency Dashboard** issue listing everything it is tracking and
+anything it has deliberately held back.
 
 ## Secrets
 
@@ -236,9 +287,6 @@ kubectl top nodes
       `ReadWriteMany`, iSCSI for block volumes with snapshots and expansion).
 - [ ] **Scheduled etcd backups in Omni.**
 - [ ] **Monitoring stack.** Prometheus and Grafana, with Cilium and Hubble metrics.
-- [ ] **Automated dependency updates** via Renovate.
-- [ ] **Kubernetes service discovery in Homepage**, so annotated services appear on
-      the dashboard automatically.
 
 ## Notes
 

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits"
+  ],
+  "timezone": "America/Halifax",
+  "schedule": ["before 6am on monday"],
+  "prConcurrentLimit": 5,
+  "labels": ["dependencies"],
+  "flux": {
+    "managerFilePatterns": [
+      "clusters/**/*.yaml",
+      "infrastructure/**/*.yaml",
+      "apps/**/*.yaml"
+    ]
+  },
+  "packageRules": [
+    {
+      "description": "Patch updates are low risk and can merge themselves. Overridden for Cilium below.",
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "automergeType": "pr",
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "Group minor bumps of the supporting stack into one reviewable PR.",
+      "matchPackageNames": ["metrics-server", "homepage"],
+      "matchUpdateTypes": ["minor"],
+      "groupName": "cluster addons"
+    },
+    {
+      "description": "Cilium is the CNI and the kube-proxy replacement. A bad upgrade takes cluster networking with it, so it is never automerged and always lands on its own. Listed last so it overrides the patch-automerge rule above.",
+      "matchPackageNames": ["cilium"],
+      "groupName": "cilium",
+      "automerge": false,
+      "minimumReleaseAge": "7 days",
+      "addLabels": ["cni", "review-carefully"]
+    },
+    {
+      "description": "Flux's own controllers are upgraded with `flux bootstrap`, which rewrites gotk-components.yaml. Renovate must not edit that file or the two will fight.",
+      "matchFileNames": ["clusters/**/flux-system/**"],
+      "enabled": false
+    }
+  ]
+}

@@ -63,3 +63,10 @@ spec:
           type: LoadBalancer
           annotations:
             io.cilium/lb-ipam-ips: "192.168.0.16"
+            # Picked up by Homepage's Kubernetes service discovery.
+            gethomepage.dev/enabled: "true"
+            gethomepage.dev/name: "Hubble UI"
+            gethomepage.dev/description: "eBPF network observability"
+            gethomepage.dev/group: "Cluster"
+            gethomepage.dev/icon: "cilium.png"
+            gethomepage.dev/href: "http://192.168.0.16"

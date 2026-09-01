@@ -27,8 +27,20 @@ spec:
     serviceAccount:
       create: true
 
+    # The chart's ClusterRole covers ingresses but NOT services. Traefik runs
+    # outside the cluster, so there are no Ingress objects here and discovery has
+    # to read Services instead — without this, annotated services never appear.
+    extraClusterRoles:
+      - apiGroups:
+          - ""
+        resources:
+          - services
+        verbs:
+          - get
+          - list
+
     env:
-      TZ: Europe/Berlin
+      TZ: America/Halifax
       # Homepage v1.x rejects any request whose Host header is not listed here.
       # Traefik forwards the original Host, so the public name must be present.
       # Adjust the hostname if you publish Homepage under a different record.
@@ -78,25 +90,19 @@ spec:
             provider: duckduckgo
             target: _blank
 
+      # The "Cluster" group is populated automatically from Services carrying
+      # gethomepage.dev/* annotations — see the README. Only things that live
+      # outside the cluster are listed statically here.
       services:
-        - Cluster:
-            - Hubble UI:
-                href: http://hubble-ui.kube-system.svc.cluster.local
-                description: Cilium eBPF network observability
+        - Infrastructure:
             - Omni:
                 href: https://omni.fullstackchef.dev
-                description: Sidero Omni - Talos cluster management
+                description: Talos machine management
+                icon: sidero.png
             - Proxmox:
                 href: https://192.168.0.1:8006
-                description: Hypervisor (update to your Proxmox address)
-
-        - Infrastructure:
-            - Cilium:
-                description: CNI, kube-proxy replacement, L2 announcements
-            - Flux:
-                description: GitOps reconciliation
-            - Metrics Server:
-                description: Resource metrics for kubectl top and Homepage widgets
+                description: Hypervisor — replace with your Proxmox address
+                icon: proxmox.png
 
       bookmarks:
         - Documentation:
