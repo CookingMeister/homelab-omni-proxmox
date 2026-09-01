@@ -105,8 +105,8 @@ spec:
                 description: Talos machine management
                 icon: talos.png
             - Proxmox:
-                href: https://192.168.0.100:8006
-                description: Hypervisor — elitebook1
+                href: https://proxmox.home.fullstackchef.dev/
+                description: Hypervisor
                 icon: proxmox.png
 
       bookmarks:
