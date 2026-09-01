@@ -13,13 +13,20 @@ outside the cluster publishes those services under `home.fullstackchef.dev`.
 | Node | IP | Role | Disk |
 | --- | --- | --- | --- |
 | talos-05t-4cw | 192.168.0.224 | control-plane | 34 GB |
-| talos-b3y-x1d | 192.168.0.246 | worker | 64 GB |
-| talos-jrf-41p | 192.168.0.77 | worker | 64 GB |
+| talos-zdx-y3b | 192.168.0.246 | control-plane | 64 GB |
+| talos-3z8-t6d | 192.168.0.77 | control-plane | 64 GB |
 
 Talos v1.13.5 · Kubernetes v1.36.2 · Cilium 1.20.1 · 4 vCPU / 8 GB RAM per node.
 
-Control planes are untainted (Omni system patch `400-talos-cluster-1-control-planes-untaint`),
-so workloads schedule on all three nodes.
+All three nodes are control planes running etcd, so the cluster tolerates losing
+one (quorum 2 of 3). The `talos-cluster-1-workers` machine set is empty.
+
+They are also untainted (Omni system patch `400-talos-cluster-1-control-planes-untaint`),
+so workloads schedule on all three.
+
+> Node names are assigned by Omni and change when a machine is reprovisioned — the
+> two promoted nodes were previously `talos-b3y-x1d` and `talos-jrf-41p`. Never pin
+> a workload to a node by name; use labels.
 
 ## Layout
 
@@ -167,8 +174,9 @@ kubectl -n kube-system port-forward svc/hubble-ui 8080:80
 - **No StorageClass.** Every node has only its OS disk, so nothing provisions PVCs.
   Homepage does not need one (its config lives in Git), but anything stateful will.
   Shared storage from TrueNAS Scale is planned — see below.
-- **Single control plane.** The cluster is not HA. Promoting the two workers to
-  control planes in Omni would fix that.
+- **No etcd backups configured in Omni** (`backupconfiguration` is null). A manual
+  snapshot lives outside this repo in `~/Documents/talos-backups/`. Configuring
+  scheduled backups in Omni is worth doing.
 - **`metrics-server` runs with `--kubelet-insecure-tls`.** Talos kubelets serve
   certificates it cannot verify unless kubelet server-cert rotation and an approver
   are enabled cluster-wide. An accepted trade-off on a trusted LAN.
