@@ -1,4 +1,4 @@
-# talos-cluster
+# homelab-omni-proxmox
 
 A three-node [Talos Linux](https://www.talos.dev/) Kubernetes cluster running on
 Proxmox VE 9.2, managed declaratively end to end: the machines by
@@ -26,9 +26,9 @@ is a commit.
 
 | Node | IP | Role | vCPU | RAM | Disk |
 | --- | --- | --- | --- | --- | --- |
-| talos-05t-4cw | 192.168.0.224 | control-plane | 4 | 12 GB | 49 GB |
-| talos-zdx-y3b | 192.168.0.246 | control-plane | 4 | 10 GB | 64 GB |
-| talos-3z8-t6d | 192.168.0.77 | control-plane | 4 | 12 GB | 64 GB |
+| talos-05t-4cw | 192.168.0.224 | control-plane | 4 | 16 GB | 64 GB |
+| talos-zdx-y3b | 192.168.0.246 | control-plane | 4 | 16 GB | 64 GB |
+| talos-3z8-t6d | 192.168.0.77 | control-plane | 4 | 16 GB | 64 GB |
 
 All three nodes are control planes running etcd, so the cluster tolerates the loss
 of one (quorum 2 of 3). They are untainted, so workloads schedule across all three
@@ -169,7 +169,7 @@ must never be committed.
 export GITHUB_TOKEN=<pat-with-repo-scope>
 
 flux bootstrap github \
-  --owner=<you> --repository=talos-cluster \
+  --owner=CookingMeister --repository=homelab-omni-proxmox \
   --branch=main --path=./clusters/talos-cluster-1 \
   --personal --public
 
@@ -235,8 +235,6 @@ kubectl top nodes
       storage from TrueNAS Scale is planned, via `democratic-csi` (NFS for
       `ReadWriteMany`, iSCSI for block volumes with snapshots and expansion).
 - [ ] **Scheduled etcd backups in Omni.**
-- [ ] **Even out node resources.** Memory differs per node and the control plane
-      node has a smaller disk than the other two.
 - [ ] **Monitoring stack.** Prometheus and Grafana, with Cilium and Hubble metrics.
 - [ ] **Automated dependency updates** via Renovate.
 - [ ] **Kubernetes service discovery in Homepage**, so annotated services appear on
@@ -244,13 +242,12 @@ kubectl top nodes
 
 ## Notes
 
-**Proxmox memory ballooning should be off for these VMs.** Kubelet reads node
-capacity once at startup and never revises it, so a node that boots while its
-balloon is still inflating registers less memory than it has, and the scheduler
-never uses the difference. Ballooning can also reclaim memory the kubelet believes
-is available, which turns into OOM kills. Set the balloon value equal to the
-assigned memory (or disable it) so capacity is fixed and known, then reboot the node
-for kubelet to pick it up. Compare the two views with:
+**Proxmox memory ballooning is disabled on these VMs, and must stay that way.**
+Kubelet reads node capacity once at startup and never revises it, so a node that
+boots with a partly-inflated balloon registers less memory than it has and the
+scheduler never uses the difference. Ballooning can also reclaim memory the kubelet
+believes is available, which surfaces as OOM kills rather than an obvious capacity
+problem. After any memory change, reboot the node and confirm the two views agree:
 
 ```sh
 kubectl get nodes -o custom-columns=NAME:.metadata.name,CAPACITY:.status.capacity.memory
