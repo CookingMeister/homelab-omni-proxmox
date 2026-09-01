@@ -1,49 +1,85 @@
 # talos-cluster
 
-GitOps repository for `talos-cluster-1` — a 3-node Talos Linux cluster running on
-Proxmox, managed by [Sidero Omni](https://omni.fullstackchef.dev) and reconciled by
-Flux CD.
+A three-node [Talos Linux](https://www.talos.dev/) Kubernetes cluster running on
+Proxmox VE 9.2, managed declaratively end to end: the machines by
+[Sidero Omni](https://omni.sidero.dev/), everything inside the cluster by
+[Flux CD](https://fluxcd.io/) from this repository.
 
-Cilium provides networking (replacing both Flannel and kube-proxy) and hands out
-LAN addresses for `LoadBalancer` services via L2 announcements. A Traefik instance
-outside the cluster publishes those services under `home.fullstackchef.dev`.
+No SSH, no `kubectl apply` by hand. Talos has no shell and no package manager — the
+OS is an API. Anything running in the cluster is described here in Git, and a change
+is a commit.
 
-## Cluster
+| | |
+| --- | --- |
+| **OS** | Talos Linux v1.13.5 |
+| **Kubernetes** | v1.36.2 |
+| **Machine management** | Sidero Omni |
+| **GitOps** | Flux CD |
+| **CNI** | Cilium 1.20.1 (eBPF, kube-proxy replacement) |
+| **Load balancing** | Cilium L2 announcements |
+| **Observability** | Hubble, metrics-server |
+| **Dashboard** | Homepage |
+| **Secrets** | SOPS + age |
+| **Hypervisor** | Proxmox VE 9.2 |
 
-| Node | IP | Role | Disk |
-| --- | --- | --- | --- |
-| talos-05t-4cw | 192.168.0.224 | control-plane | 34 GB |
-| talos-zdx-y3b | 192.168.0.246 | control-plane | 64 GB |
-| talos-3z8-t6d | 192.168.0.77 | control-plane | 64 GB |
+## Topology
 
-Talos v1.13.5 · Kubernetes v1.36.2 · Cilium 1.20.1 · 4 vCPU / 8 GB RAM per node.
+| Node | IP | Role | vCPU | RAM | Disk |
+| --- | --- | --- | --- | --- | --- |
+| talos-05t-4cw | 192.168.0.224 | control-plane | 4 | 8 GB | 34 GB |
+| talos-zdx-y3b | 192.168.0.246 | control-plane | 4 | 8 GB | 64 GB |
+| talos-3z8-t6d | 192.168.0.77 | control-plane | 4 | 8 GB | 64 GB |
 
-All three nodes are control planes running etcd, so the cluster tolerates losing
-one (quorum 2 of 3). The `talos-cluster-1-workers` machine set is empty.
+All three nodes are control planes running etcd, so the cluster tolerates the loss
+of one (quorum 2 of 3). They are untainted, so workloads schedule across all three
+and there are no dedicated worker nodes.
 
-They are also untainted (Omni system patch `400-talos-cluster-1-control-planes-untaint`),
-so workloads schedule on all three.
+> Omni assigns node hostnames and reassigns them whenever a machine is
+> reprovisioned. Never pin a workload to a node by name — use labels.
 
-> Node names are assigned by Omni and change when a machine is reprovisioned — the
-> two promoted nodes were previously `talos-b3y-x1d` and `talos-jrf-41p`. Never pin
-> a workload to a node by name; use labels.
-
-## Layout
+## Architecture
 
 ```
-clusters/talos-cluster-1/   Flux entrypoint - Kustomizations pointing at the trees below
+        Internet
+           │
+      Cloudflare  (DNS + TLS)
+           │
+      Hetzner VPS
+           │
+   ┌───────┴────────┐
+   │  Traefik LXC   │  home.fullstackchef.dev
+   │  (Proxmox)     │
+   └───────┬────────┘
+           │  routes to fixed LAN IPs
+   ┌───────┴──────────────────────────────┐
+   │  Cilium LoadBalancer  192.168.0.15+  │
+   ├──────────────────────────────────────┤
+   │  talos-05t-4cw  talos-zdx-y3b  ...   │
+   │  Talos + Kubernetes on Proxmox VE    │
+   └──────────────────────────────────────┘
+```
+
+TLS terminates at Traefik, which runs outside the cluster in a Proxmox LXC. The
+cluster exposes services as `LoadBalancer` on the LAN and Traefik proxies to those
+addresses, so there is no in-cluster ingress controller.
+
+## Repository layout
+
+```
+clusters/talos-cluster-1/   Flux entrypoint — Kustomizations for the trees below
 infrastructure/controllers/ Cluster-wide controllers (Cilium, metrics-server)
-infrastructure/configs/     Cluster-wide config that depends on those controllers
-apps/talos-cluster-1/       Workloads (Homepage dashboard)
+infrastructure/configs/     Cluster-wide config depending on those controllers
+apps/talos-cluster-1/       Workloads (Homepage)
 ```
 
-Reconcile order: `infra-controllers` → `infra-configs`, with `apps` depending on
+Reconcile order is `infra-controllers` → `infra-configs`, with `apps` depending on
 `infra-controllers`.
 
 ## Networking
 
-Cilium replaces Flannel and kube-proxy. That requires Talos to ship neither, which
-is done by the Omni config patch `400-talos-cluster-1-cilium-cni-none`:
+Cilium provides the CNI and fully replaces kube-proxy — service routing is eBPF, and
+no `kube-proxy` DaemonSet or iptables service chains exist. This requires Talos to
+ship neither a CNI nor kube-proxy, set through an Omni config patch:
 
 ```yaml
 cluster:
@@ -54,21 +90,21 @@ cluster:
     disabled: true
 ```
 
-Cilium reaches the API server through Talos **KubePrism** on `localhost:7445`
-rather than a service VIP — that is what lets kube-proxy replacement work before
-any CNI is running.
+Cilium reaches the API server through Talos **KubePrism** on `localhost:7445`, a
+node-local API server load balancer. That is what lets kube-proxy replacement work
+before any CNI is running — there is no chicken-and-egg on the service VIP.
 
 ### LoadBalancer addresses
 
-`192.168.0.15-34` is reserved outside the router's DHCP range and handed out by the
-`lan-pool` `CiliumLoadBalancerIPPool`. Cilium answers ARP for these from whichever
-node currently holds the lease, and fails over automatically.
+`192.168.0.15-34` is reserved outside the router's DHCP range and served by the
+`lan-pool` `CiliumLoadBalancerIPPool`. Cilium answers ARP for these addresses from
+whichever node holds the lease, and fails over automatically.
 
 | IP | Service |
 | --- | --- |
 | 192.168.0.15 | Homepage |
 | 192.168.0.16 | Hubble UI |
-| 192.168.0.17-34 | unallocated |
+| 192.168.0.17-34 | available |
 
 Pin an address by annotating the Service:
 
@@ -77,13 +113,12 @@ annotations:
   io.cilium/lb-ipam-ips: "192.168.0.17"
 ```
 
-Check who is announcing what with `kubectl get leases -n kube-system | grep l2announce`.
+The L2 announcement policy matches `^eth[0-9]+$`, so announcements stay on the LAN
+NIC and are never sent into Omni's `siderolink` WireGuard interface.
 
-### Traefik
+### Publishing a service through Traefik
 
-Traefik runs in an LXC on Proxmox (outside this cluster) and terminates TLS with
-Cloudflare certs for `home.fullstackchef.dev`. Point it at the LoadBalancer IPs
-above using the file provider:
+Add a router and service to Traefik's file provider pointing at the pinned IP:
 
 ```yaml
 http:
@@ -101,39 +136,32 @@ http:
           - url: "http://192.168.0.15:3000"
 ```
 
-Homepage v1.x rejects requests whose `Host` header it does not recognise, so any
-new hostname must also be added to `HOMEPAGE_ALLOWED_HOSTS` in its HelmRelease.
+Homepage rejects requests whose `Host` header it does not recognise, so any new
+hostname must also be added to `HOMEPAGE_ALLOWED_HOSTS` in its HelmRelease.
 
 ## Secrets
 
-This repository is public, so **nothing unencrypted may be committed**. Secrets are
-encrypted with [SOPS](https://github.com/getsops/sops) + [age](https://github.com/FiloSottile/age)
-and decrypted in-cluster by Flux — the encrypted file is safe to publish.
+This repository is public. Secrets are encrypted with
+[SOPS](https://github.com/getsops/sops) and [age](https://github.com/FiloSottile/age)
+and decrypted in-cluster by Flux, so the encrypted files are safe to publish.
 
-`.sops.yaml` encrypts only `data` and `stringData`, so a secret's name, namespace
-and key names stay readable in diffs while the values do not.
+`.sops.yaml` encrypts only `data` and `stringData` — a secret's name, namespace and
+key names stay readable in diffs while the values do not.
 
-Name secret files `*.sops.yaml` and they are encrypted automatically:
+Files named `*.sops.yaml` are encrypted automatically:
 
 ```sh
 export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt
 
-sops --encrypt --in-place apps/talos-cluster-1/foo/credentials.sops.yaml  # before committing
-sops apps/talos-cluster-1/foo/credentials.sops.yaml                       # edit in place
+sops --encrypt --in-place apps/talos-cluster-1/foo/credentials.sops.yaml
+sops apps/talos-cluster-1/foo/credentials.sops.yaml   # edit in place
 ```
 
-> **Back up `~/.config/sops/age/keys.txt`.** It is gitignored and exists nowhere
-> else. Lose it and every encrypted secret in this repo becomes unrecoverable.
+> The age private key lives only at `~/.config/sops/age/keys.txt` and is gitignored.
+> Back it up. Without it, every encrypted secret here is unrecoverable.
 
-The cluster needs the same key as a secret in `flux-system` (see Bootstrap below).
-
-### What is safe to have public
-
-The private LAN addresses here are RFC1918 and unroutable from the internet, and
-`fullstackchef.dev` is already public in DNS. Neither is a meaningful disclosure.
-The things that must never land in a commit are the kubeconfig, the Omni
-`omniconfig.yaml`, talosconfig, PGP keys, and the age private key — all covered by
-`.gitignore`.
+The kubeconfig, Omni `omniconfig.yaml`, talosconfig and PGP keys are gitignored and
+must never be committed.
 
 ## Bootstrap
 
@@ -150,18 +178,14 @@ kubectl -n flux-system create secret generic sops-age \
   --from-file=age.agekey=$HOME/.config/sops/age/keys.txt
 ```
 
-Cilium, metrics-server and Homepage were installed by hand during the initial
-build. The HelmReleases adopt those existing releases because the release names
-and namespaces match, so bootstrapping does not redeploy them.
-
 ## Access
 
-| Service | URL |
+| Service | Address |
 | --- | --- |
 | Homepage | <http://192.168.0.15:3000> |
 | Hubble UI | <http://192.168.0.16> |
 
-Or without going through the LAN addresses:
+Or via port-forward:
 
 ```sh
 export KUBECONFIG=.kube/talos-cluster-1-kubeconfig.yaml
@@ -169,29 +193,55 @@ kubectl -n homepage    port-forward svc/homepage  3000:3000
 kubectl -n kube-system port-forward svc/hubble-ui 8080:80
 ```
 
-## Known gaps
+## Operations
 
-- **No StorageClass.** Every node has only its OS disk, so nothing provisions PVCs.
-  Homepage does not need one (its config lives in Git), but anything stateful will.
-  Shared storage from TrueNAS Scale is planned — see below.
-- **No etcd backups configured in Omni** (`backupconfiguration` is null). A manual
-  snapshot lives outside this repo in `~/Documents/talos-backups/`. Configuring
-  scheduled backups in Omni is worth doing.
-- **`metrics-server` runs with `--kubelet-insecure-tls`.** Talos kubelets serve
-  certificates it cannot verify unless kubelet server-cert rotation and an approver
-  are enabled cluster-wide. An accepted trade-off on a trusted LAN.
+### Node maintenance
 
-### Planned: TrueNAS Scale storage
+Every node is an etcd member, so **only one node may be down at a time** — quorum is
+2 of 3. Take the etcd leader last, so there is a single leader election at the end:
 
-Once TrueNAS is attached, the usual options are:
+```sh
+# find the leader (LEADER column) and the current lease holders
+talosctl -n 192.168.0.224,192.168.0.246,192.168.0.77 etcd status
+kubectl get leases -n kube-system | grep l2announce
+```
 
-- **democratic-csi** (`freenas-nfs` or `freenas-iscsi` driver) — a real CSI driver
-  that talks to the TrueNAS API. Supports snapshots, expansion and per-PVC datasets.
-  iSCSI gives `ReadWriteOnce` block volumes; NFS gives `ReadWriteMany`. This is the
-  better long-term choice and belongs in `infrastructure/controllers/`.
-- **nfs-subdir-external-provisioner** — much simpler, one NFS export carved into
-  subdirectories, `ReadWriteMany` only, no snapshots. Fine if you just want PVCs to
-  bind and do not care about storage features.
+Then, per node:
 
-Either needs TrueNAS API credentials, which is exactly what the SOPS setup above is
-for.
+```sh
+kubectl drain <node> --ignore-daemonsets --delete-emptydir-data
+talosctl -n <ip> shutdown
+# perform maintenance, power on
+kubectl uncordon <node>
+```
+
+Before moving to the next node, confirm all three etcd members report the same
+`RAFT INDEX` with no errors. A node reports `Ready` before etcd has caught up, so
+`kubectl get nodes` alone is not a sufficient check.
+
+### Health checks
+
+```sh
+talosctl -n 192.168.0.224 etcd members
+kubectl -n kube-system exec ds/cilium -c cilium-agent -- cilium-dbg status
+flux get all -A
+kubectl top nodes
+```
+
+## Roadmap
+
+- [ ] **Persistent storage.** There is no StorageClass — each node has only its OS
+      disk, so nothing provisions PVCs and stateful workloads cannot run. Shared
+      storage from TrueNAS Scale is planned, via `democratic-csi` (NFS for
+      `ReadWriteMany`, iSCSI for block volumes with snapshots and expansion).
+- [ ] **Scheduled etcd backups in Omni.**
+- [ ] **Monitoring stack.** Prometheus and Grafana, with Cilium and Hubble metrics.
+- [ ] **Automated dependency updates** via Renovate.
+- [ ] **Kubernetes service discovery in Homepage**, so annotated services appear on
+      the dashboard automatically.
+
+## Notes
+
+`metrics-server` runs with `--kubelet-insecure-tls`. Talos kubelets serve
+certificates it cannot verify unless kubelet server-certificate rotation and an
+approver are enabled cluster-wide — an accepted trade-off on a trusted LAN.

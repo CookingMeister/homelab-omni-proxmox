@@ -14,9 +14,8 @@ spec:
         kind: HelmRepository
         name: cilium
         namespace: kube-system
-  # Cilium was installed by hand during bootstrap; Flux adopts that existing
-  # release because the name/namespace match. Keep these values in sync with
-  # whatever is actually running, or the first reconcile will change the CNI.
+  # These values define the cluster's dataplane. A change here reconciles onto
+  # the live CNI, so treat edits with the same care as a network change.
   install:
     crds: CreateReplace
   upgrade:
