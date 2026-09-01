@@ -118,7 +118,16 @@ NIC and are never sent into Omni's `siderolink` WireGuard interface.
 
 ### Publishing a service through Traefik
 
-Add a router and service to Traefik's file provider pointing at the pinned IP:
+Add a router and service to Traefik's file provider pointing at the pinned IP.
+Traefik reads `/etc/traefik/conf.d/` as **one** configuration, so a parse error in any
+file there drops every router in the directory — merge into the existing `routers:`
+and `services:` blocks rather than appending, and validate before reloading:
+
+```sh
+python3 -c "import yaml;yaml.safe_load(open('/etc/traefik/conf.d/services.yml'))"
+systemctl restart traefik
+```
+
 
 ```yaml
 http:
@@ -128,7 +137,7 @@ http:
       entryPoints: [websecure]
       service: homepage
       tls:
-        certResolver: cloudflare
+        certResolver: letsencrypt
   services:
     homepage:
       loadBalancer:
@@ -148,7 +157,7 @@ http:
       entryPoints: [websecure]
       service: k8s-homepage
       tls:
-        certResolver: cloudflare
+        certResolver: letsencrypt
   services:
     k8s-homepage:
       loadBalancer:
