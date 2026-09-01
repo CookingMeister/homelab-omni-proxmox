@@ -171,7 +171,7 @@ export GITHUB_TOKEN=<pat-with-repo-scope>
 flux bootstrap github \
   --owner=CookingMeister --repository=homelab-omni-proxmox \
   --branch=main --path=./clusters/talos-cluster-1 \
-  --personal --public
+  --personal --private=false
 
 # give Flux the age key so it can decrypt *.sops.yaml
 kubectl -n flux-system create secret generic sops-age \
