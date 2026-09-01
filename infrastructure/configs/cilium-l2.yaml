@@ -1,0 +1,31 @@
+---
+# Pool of LAN addresses Cilium hands out to type=LoadBalancer services.
+#
+# !! BEFORE ENABLING !!  The range below is a PLACEHOLDER. It must be a block
+# inside 192.168.0.0/24 that is OUTSIDE your router's DHCP pool, or you will get
+# IP conflicts. Existing nodes sit at .77, .224 and .246, so DHCP clearly reaches
+# high into the subnet - check the router before committing to a range.
+#
+# Once the range is correct, uncomment the `resources:` entries in
+# infrastructure/configs/kustomization.yaml to let Flux apply this file.
+apiVersion: cilium.io/v2alpha1
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: lan-pool
+spec:
+  blocks:
+    - start: "192.168.0.CHANGEME"
+      stop: "192.168.0.CHANGEME"
+---
+# Which nodes/interfaces answer ARP for those addresses.
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: lan-policy
+spec:
+  # Announce from every node. Restrict with a nodeSelector if you would rather
+  # only the workers answer ARP.
+  interfaces:
+    - ^eth[0-9]+
+  externalIPs: true
+  loadBalancerIPs: true

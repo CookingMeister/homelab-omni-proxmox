@@ -1,0 +1,11 @@
+# Local cluster access material - user specific, never commit
+.kube/
+talosconfig
+omniconfig.yaml
+*.pgp
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

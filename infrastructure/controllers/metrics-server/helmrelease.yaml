@@ -1,0 +1,33 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: metrics-server
+  namespace: kube-system
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: metrics-server
+      version: "3.14.0"
+      sourceRef:
+        kind: HelmRepository
+        name: metrics-server
+        namespace: kube-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    args:
+      # Talos kubelets serve with certificates metrics-server cannot verify
+      # unless kubelet server cert rotation + an approver are enabled cluster-wide.
+      # This skips that verification - acceptable on a trusted LAN, but it is the
+      # reason this flag is here. Remove it if you later enable
+      # machine.kubelet.extraArgs.rotate-server-certificates in the Talos config.
+      - --kubelet-insecure-tls
+      - --kubelet-preferred-address-types=InternalIP,Hostname,ExternalIP
+    metrics:
+      enabled: true

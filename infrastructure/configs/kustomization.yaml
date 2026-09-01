@@ -1,0 +1,6 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: []
+  # Uncomment once the IP range in cilium-l2.yaml is set to a real, free block:
+  # - cilium-l2.yaml

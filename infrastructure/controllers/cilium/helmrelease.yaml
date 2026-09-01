@@ -1,0 +1,61 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cilium
+  namespace: kube-system
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: cilium
+      version: "1.20.1"
+      sourceRef:
+        kind: HelmRepository
+        name: cilium
+        namespace: kube-system
+  # Cilium was installed by hand during bootstrap; Flux adopts that existing
+  # release because the name/namespace match. Keep these values in sync with
+  # whatever is actually running, or the first reconcile will change the CNI.
+  install:
+    crds: CreateReplace
+  upgrade:
+    crds: CreateReplace
+    remediation:
+      retries: 3
+  values:
+    ipam:
+      mode: kubernetes
+
+    # eBPF kube-proxy replacement. Requires Talos to run with
+    # cluster.proxy.disabled=true (set via the Omni config patch
+    # 400-talos-cluster-1-cilium-cni-none).
+    kubeProxyReplacement: true
+    # Talos KubePrism - node-local API server load balancer.
+    k8sServiceHost: localhost
+    k8sServicePort: 7445
+
+    # Talos Linux security overrides
+    securityContext:
+      capabilities:
+        ciliumAgent:
+          [CHOWN, KILL, NET_ADMIN, NET_RAW, IPC_LOCK, SYS_ADMIN, SYS_RESOURCE, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+        cleanCiliumState: [NET_ADMIN, SYS_ADMIN, SYS_RESOURCE]
+
+    # L2 announcements replace MetalLB for LoadBalancer services.
+    # The IP pool itself lives in infrastructure/configs/cilium-l2.yaml.
+    l2announcements:
+      enabled: true
+
+    # L2 announcements are API-heavy; raise the client rate limit per Cilium docs
+    k8sClientRateLimit:
+      qps: 50
+      burst: 100
+
+    # eBPF network observability
+    hubble:
+      enabled: true
+      relay:
+        enabled: true
+      ui:
+        enabled: true
