@@ -12,6 +12,10 @@ spec:
     kind: GitRepository
     name: flux-system
   path: ./infrastructure/controllers
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
   prune: true
   wait: true
 ---
@@ -30,4 +34,8 @@ spec:
     kind: GitRepository
     name: flux-system
   path: ./infrastructure/configs
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
   prune: true

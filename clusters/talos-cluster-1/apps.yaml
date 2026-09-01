@@ -14,5 +14,9 @@ spec:
     kind: GitRepository
     name: flux-system
   path: ./apps/talos-cluster-1
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
   prune: true
   wait: true

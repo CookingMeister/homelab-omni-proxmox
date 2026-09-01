@@ -29,15 +29,19 @@ spec:
 
     env:
       TZ: Europe/Berlin
-      # Homepage v1.x refuses requests whose Host header is not listed here.
-      # Add the LoadBalancer IP or DNS name once you expose it, comma separated.
-      HOMEPAGE_ALLOWED_HOSTS: "localhost:3000,homepage.homepage.svc.cluster.local:3000"
+      # Homepage v1.x rejects any request whose Host header is not listed here.
+      # Traefik forwards the original Host, so the public name must be present.
+      # Adjust the hostname if you publish Homepage under a different record.
+      HOMEPAGE_ALLOWED_HOSTS: "home.fullstackchef.dev,homepage.home.fullstackchef.dev,192.168.0.15:3000,localhost:3000"
 
     service:
       main:
-        # Switch to LoadBalancer once the Cilium L2 IP pool in
-        # infrastructure/configs/cilium-l2.yaml is filled in and enabled.
-        type: ClusterIP
+        # Cilium L2 announcements hand out this address from lan-pool
+        # (infrastructure/configs/cilium-l2.yaml). Pinned so the Traefik LXC
+        # backend address stays stable across redeploys.
+        type: LoadBalancer
+        annotations:
+          io.cilium/lb-ipam-ips: "192.168.0.15"
         ports:
           http:
             port: 3000

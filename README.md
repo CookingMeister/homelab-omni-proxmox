@@ -1,7 +1,12 @@
 # talos-cluster
 
-GitOps repository for `talos-cluster-1` — a 3-node Talos Linux cluster on Proxmox,
-managed by [Sidero Omni](https://omni.fullstackchef.dev).
+GitOps repository for `talos-cluster-1` — a 3-node Talos Linux cluster running on
+Proxmox, managed by [Sidero Omni](https://omni.fullstackchef.dev) and reconciled by
+Flux CD.
+
+Cilium provides networking (replacing both Flannel and kube-proxy) and hands out
+LAN addresses for `LoadBalancer` services via L2 announcements. A Traefik instance
+outside the cluster publishes those services under `home.fullstackchef.dev`.
 
 ## Cluster
 
@@ -30,8 +35,8 @@ Reconcile order: `infra-controllers` → `infra-configs`, with `apps` depending 
 
 ## Networking
 
-Cilium replaces both Flannel and kube-proxy. That requires Talos to ship neither,
-which is done by the Omni config patch `400-talos-cluster-1-cilium-cni-none`:
+Cilium replaces Flannel and kube-proxy. That requires Talos to ship neither, which
+is done by the Omni config patch `400-talos-cluster-1-cilium-cni-none`:
 
 ```yaml
 cluster:
@@ -42,49 +47,143 @@ cluster:
     disabled: true
 ```
 
-Cilium talks to the API server through Talos **KubePrism** on `localhost:7445`
-rather than a service VIP, which is what makes kube-proxy replacement work before
-any CNI is up.
+Cilium reaches the API server through Talos **KubePrism** on `localhost:7445`
+rather than a service VIP — that is what lets kube-proxy replacement work before
+any CNI is running.
 
-### LoadBalancer addresses — not yet active
+### LoadBalancer addresses
 
-`infrastructure/configs/cilium-l2.yaml` defines a `CiliumLoadBalancerIPPool` and a
-`CiliumL2AnnouncementPolicy`, but they are **deliberately not applied**: the IP
-range is still a placeholder. To enable:
+`192.168.0.15-34` is reserved outside the router's DHCP range and handed out by the
+`lan-pool` `CiliumLoadBalancerIPPool`. Cilium answers ARP for these from whichever
+node currently holds the lease, and fails over automatically.
 
-1. Find a block inside `192.168.0.0/24` that is outside your router's DHCP pool.
-   Existing nodes are at `.77`, `.224` and `.246`, so DHCP reaches high into the
-   subnet — check the router rather than guessing.
-2. Put that range in `cilium-l2.yaml`.
-3. Uncomment `- cilium-l2.yaml` in `infrastructure/configs/kustomization.yaml`.
-4. Flip Homepage's `service.main.type` to `LoadBalancer` and add the resulting IP
-   to `HOMEPAGE_ALLOWED_HOSTS`.
+| IP | Service |
+| --- | --- |
+| 192.168.0.15 | Homepage |
+| 192.168.0.16 | Hubble UI |
+| 192.168.0.17-34 | unallocated |
 
-## Accessing things before LoadBalancer IPs exist
+Pin an address by annotating the Service:
+
+```yaml
+annotations:
+  io.cilium/lb-ipam-ips: "192.168.0.17"
+```
+
+Check who is announcing what with `kubectl get leases -n kube-system | grep l2announce`.
+
+### Traefik
+
+Traefik runs in an LXC on Proxmox (outside this cluster) and terminates TLS with
+Cloudflare certs for `home.fullstackchef.dev`. Point it at the LoadBalancer IPs
+above using the file provider:
+
+```yaml
+http:
+  routers:
+    homepage:
+      rule: "Host(`homepage.home.fullstackchef.dev`)"
+      entryPoints: [websecure]
+      service: homepage
+      tls:
+        certResolver: cloudflare
+  services:
+    homepage:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.0.15:3000"
+```
+
+Homepage v1.x rejects requests whose `Host` header it does not recognise, so any
+new hostname must also be added to `HOMEPAGE_ALLOWED_HOSTS` in its HelmRelease.
+
+## Secrets
+
+This repository is public, so **nothing unencrypted may be committed**. Secrets are
+encrypted with [SOPS](https://github.com/getsops/sops) + [age](https://github.com/FiloSottile/age)
+and decrypted in-cluster by Flux — the encrypted file is safe to publish.
+
+`.sops.yaml` encrypts only `data` and `stringData`, so a secret's name, namespace
+and key names stay readable in diffs while the values do not.
+
+Name secret files `*.sops.yaml` and they are encrypted automatically:
+
+```sh
+export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt
+
+sops --encrypt --in-place apps/talos-cluster-1/foo/credentials.sops.yaml  # before committing
+sops apps/talos-cluster-1/foo/credentials.sops.yaml                       # edit in place
+```
+
+> **Back up `~/.config/sops/age/keys.txt`.** It is gitignored and exists nowhere
+> else. Lose it and every encrypted secret in this repo becomes unrecoverable.
+
+The cluster needs the same key as a secret in `flux-system` (see Bootstrap below).
+
+### What is safe to have public
+
+The private LAN addresses here are RFC1918 and unroutable from the internet, and
+`fullstackchef.dev` is already public in DNS. Neither is a meaningful disclosure.
+The things that must never land in a commit are the kubeconfig, the Omni
+`omniconfig.yaml`, talosconfig, PGP keys, and the age private key — all covered by
+`.gitignore`.
+
+## Bootstrap
+
+```sh
+export GITHUB_TOKEN=<pat-with-repo-scope>
+
+flux bootstrap github \
+  --owner=<you> --repository=talos-cluster \
+  --branch=main --path=./clusters/talos-cluster-1 \
+  --personal --public
+
+# give Flux the age key so it can decrypt *.sops.yaml
+kubectl -n flux-system create secret generic sops-age \
+  --from-file=age.agekey=$HOME/.config/sops/age/keys.txt
+```
+
+Cilium, metrics-server and Homepage were installed by hand during the initial
+build. The HelmReleases adopt those existing releases because the release names
+and namespaces match, so bootstrapping does not redeploy them.
+
+## Access
+
+| Service | URL |
+| --- | --- |
+| Homepage | <http://192.168.0.15:3000> |
+| Hubble UI | <http://192.168.0.16> |
+
+Or without going through the LAN addresses:
 
 ```sh
 export KUBECONFIG=.kube/talos-cluster-1-kubeconfig.yaml
-
-# Homepage
-kubectl -n homepage port-forward svc/homepage 3000:3000
-# -> http://localhost:3000
-
-# Hubble UI (Cilium network observability)
+kubectl -n homepage    port-forward svc/homepage  3000:3000
 kubectl -n kube-system port-forward svc/hubble-ui 8080:80
-# -> http://localhost:8080
 ```
 
-## Notes
+## Known gaps
 
-- **`metrics-server` runs with `--kubelet-insecure-tls`.** Talos kubelets serve
-  certificates metrics-server cannot verify unless kubelet server-cert rotation and
-  an approver are enabled cluster-wide. The flag is an accepted trade-off on a
-  trusted LAN; see the comment in the HelmRelease.
-- **Cilium was installed by hand at bootstrap** and is adopted by the HelmRelease
-  because the release name and namespace match. Keep the values in that HelmRelease
-  in sync with reality — it is now the source of truth.
-- **There is no StorageClass.** Every node has only its OS disk, so nothing is
-  provisioning PVCs. Homepage does not need one (its config lives in Git), but
-  anything stateful will. `local-path-provisioner` is the usual next step.
+- **No StorageClass.** Every node has only its OS disk, so nothing provisions PVCs.
+  Homepage does not need one (its config lives in Git), but anything stateful will.
+  Shared storage from TrueNAS Scale is planned — see below.
 - **Single control plane.** The cluster is not HA. Promoting the two workers to
   control planes in Omni would fix that.
+- **`metrics-server` runs with `--kubelet-insecure-tls`.** Talos kubelets serve
+  certificates it cannot verify unless kubelet server-cert rotation and an approver
+  are enabled cluster-wide. An accepted trade-off on a trusted LAN.
+
+### Planned: TrueNAS Scale storage
+
+Once TrueNAS is attached, the usual options are:
+
+- **democratic-csi** (`freenas-nfs` or `freenas-iscsi` driver) — a real CSI driver
+  that talks to the TrueNAS API. Supports snapshots, expansion and per-PVC datasets.
+  iSCSI gives `ReadWriteOnce` block volumes; NFS gives `ReadWriteMany`. This is the
+  better long-term choice and belongs in `infrastructure/controllers/`.
+- **nfs-subdir-external-provisioner** — much simpler, one NFS export carved into
+  subdirectories, `ReadWriteMany` only, no snapshots. Fine if you just want PVCs to
+  bind and do not care about storage features.
+
+Either needs TrueNAS API credentials, which is exactly what the SOPS setup above is
+for.

@@ -59,3 +59,8 @@ spec:
         enabled: true
       ui:
         enabled: true
+        service:
+          # Exposed on the LAN so the Traefik LXC can proxy it, same as Homepage.
+          type: LoadBalancer
+          annotations:
+            io.cilium/lb-ipam-ips: "192.168.0.16"

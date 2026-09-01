@@ -1,0 +1,10 @@
+# SOPS encryption rules. The private key lives at
+#   ~/.config/sops/age/keys.txt   (NEVER committed - back it up separately)
+# and inside the cluster as the secret `sops-age` in the flux-system namespace.
+#
+# Only the value fields are encrypted, so manifests stay diffable: you can still
+# see which keys a Secret defines and which namespace it targets in a PR.
+creation_rules:
+  - path_regex: .*\.sops\.ya?ml$
+    encrypted_regex: ^(data|stringData)$
+    age: age1x5jsylzj5w978hahmpfkqwne3qkal89fvdp3qny7ctegl2k8ws9q2497fn

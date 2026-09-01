@@ -9,3 +9,7 @@ omniconfig.yaml
 Thumbs.db
 .vscode/
 .idea/
+
+# SOPS age private key - must never be committed
+keys.txt
+*.agekey

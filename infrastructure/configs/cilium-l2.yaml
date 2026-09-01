@@ -1,31 +1,32 @@
 ---
 # Pool of LAN addresses Cilium hands out to type=LoadBalancer services.
+# 192.168.0.15-34 is reserved outside the router's DHCP range.
+# Cluster nodes live at .77, .224 and .246, well clear of this block.
 #
-# !! BEFORE ENABLING !!  The range below is a PLACEHOLDER. It must be a block
-# inside 192.168.0.0/24 that is OUTSIDE your router's DHCP pool, or you will get
-# IP conflicts. Existing nodes sit at .77, .224 and .246, so DHCP clearly reaches
-# high into the subnet - check the router before committing to a range.
-#
-# Once the range is correct, uncomment the `resources:` entries in
-# infrastructure/configs/kustomization.yaml to let Flux apply this file.
-apiVersion: cilium.io/v2alpha1
+# Allocation (pin an address with the annotation
+# `io.cilium/lb-ipam-ips: "192.168.0.x"` on the Service):
+#   .15  homepage
+#   .16  hubble-ui
+#   .17-.34  unallocated
+apiVersion: cilium.io/v2
 kind: CiliumLoadBalancerIPPool
 metadata:
   name: lan-pool
 spec:
   blocks:
-    - start: "192.168.0.CHANGEME"
-      stop: "192.168.0.CHANGEME"
+    - start: "192.168.0.15"
+      stop: "192.168.0.34"
 ---
-# Which nodes/interfaces answer ARP for those addresses.
+# Which nodes answer ARP for those addresses. Every node participates; Cilium
+# elects a single announcing node per service and fails over automatically.
 apiVersion: cilium.io/v2alpha1
 kind: CiliumL2AnnouncementPolicy
 metadata:
   name: lan-policy
 spec:
-  # Announce from every node. Restrict with a nodeSelector if you would rather
-  # only the workers answer ARP.
+  # Only the real LAN NIC. Must not match Omni's `siderolink` WireGuard
+  # interface, or ARP would be announced into the management tunnel.
   interfaces:
-    - ^eth[0-9]+
+    - ^eth[0-9]+$
   externalIPs: true
   loadBalancerIPs: true
