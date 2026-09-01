@@ -137,7 +137,24 @@ http:
 ```
 
 Homepage rejects requests whose `Host` header it does not recognise, so any new
-hostname must also be added to `HOMEPAGE_ALLOWED_HOSTS` in its HelmRelease.
+hostname must also be added to `HOMEPAGE_ALLOWED_HOSTS` in its HelmRelease. The
+cluster dashboard answers to `k8s.home.fullstackchef.dev`:
+
+```yaml
+http:
+  routers:
+    k8s-homepage:
+      rule: "Host(`k8s.home.fullstackchef.dev`)"
+      entryPoints: [websecure]
+      service: k8s-homepage
+      tls:
+        certResolver: cloudflare
+  services:
+    k8s-homepage:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.0.15:3000"
+```
 
 ## Dashboard
 
@@ -226,8 +243,11 @@ kubectl -n flux-system create secret generic sops-age \
 
 | Service | Address |
 | --- | --- |
-| Homepage | <http://192.168.0.15:3000> |
+| Homepage | <https://k8s.home.fullstackchef.dev> · <http://192.168.0.15:3000> |
 | Hubble UI | <http://192.168.0.16> |
+
+> `homepage.home.fullstackchef.dev` is a **separate, pre-existing Homepage** outside
+> this cluster. The cluster dashboard is `k8s.home.fullstackchef.dev`.
 
 Or via port-forward:
 

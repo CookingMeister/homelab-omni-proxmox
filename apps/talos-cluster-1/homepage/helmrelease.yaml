@@ -36,10 +36,11 @@ spec:
 
     env:
       TZ: America/Halifax
-      # Homepage v1.x rejects any request whose Host header is not listed here.
+      # Homepage rejects any request whose Host header is not listed here, and
       # Traefik forwards the original Host, so the public name must be present.
-      # Adjust the hostname if you publish Homepage under a different record.
-      HOMEPAGE_ALLOWED_HOSTS: "home.fullstackchef.dev,homepage.home.fullstackchef.dev,192.168.0.15:3000,localhost:3000"
+      # This is the CLUSTER dashboard: homepage.home.fullstackchef.dev belongs to
+      # a separate, pre-existing Homepage and must not be listed here.
+      HOMEPAGE_ALLOWED_HOSTS: "k8s.home.fullstackchef.dev,192.168.0.15:3000,localhost:3000"
 
     service:
       main:
