@@ -97,13 +97,16 @@ spec:
                 icon: cilium.png
 
         - Infrastructure:
+            # Bare *.png names resolve against the dashboard-icons CDN, so the
+            # name must exist there — an unknown name renders as a broken image.
+            # There is no sidero/omni icon; talos.png is the closest match.
             - Omni:
                 href: https://omni.fullstackchef.dev
                 description: Talos machine management
-                icon: sidero.png
+                icon: talos.png
             - Proxmox:
-                href: https://192.168.0.1:8006
-                description: Hypervisor — replace with your Proxmox address
+                href: https://192.168.0.100:8006
+                description: Hypervisor — elitebook1
                 icon: proxmox.png
 
       bookmarks:
