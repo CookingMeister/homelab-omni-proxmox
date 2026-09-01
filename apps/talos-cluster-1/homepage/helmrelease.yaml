@@ -27,18 +27,6 @@ spec:
     serviceAccount:
       create: true
 
-    # The chart's ClusterRole covers ingresses but NOT services. Traefik runs
-    # outside the cluster, so there are no Ingress objects here and discovery has
-    # to read Services instead — without this, annotated services never appear.
-    extraClusterRoles:
-      - apiGroups:
-          - ""
-        resources:
-          - services
-        verbs:
-          - get
-          - list
-
     env:
       TZ: America/Halifax
       # Homepage v1.x rejects any request whose Host header is not listed here.
@@ -90,10 +78,17 @@ spec:
             provider: duckduckgo
             target: _blank
 
-      # The "Cluster" group is populated automatically from Services carrying
-      # gethomepage.dev/* annotations — see the README. Only things that live
-      # outside the cluster are listed statically here.
+      # Homepage's Kubernetes discovery reads Ingress, Traefik IngressRoute and
+      # Gateway API HTTPRoute objects — not Services. Traefik runs outside this
+      # cluster and nothing here creates those objects, so the dashboard is
+      # defined here in Git instead.
       services:
+        - Cluster:
+            - Hubble UI:
+                href: http://192.168.0.16
+                description: eBPF network observability
+                icon: cilium.png
+
         - Infrastructure:
             - Omni:
                 href: https://omni.fullstackchef.dev

@@ -141,32 +141,19 @@ hostname must also be added to `HOMEPAGE_ALLOWED_HOSTS` in its HelmRelease.
 
 ## Dashboard
 
-Homepage discovers services from the cluster itself. Annotate a `Service` and it
-appears on the dashboard — no edit to the Homepage config required:
+Homepage is configured entirely in Git, in its HelmRelease under `config`. Services
+are listed under `services`, grouped, with the group order set by `layout` in
+`settingsString`.
 
-```yaml
-metadata:
-  annotations:
-    gethomepage.dev/enabled: "true"
-    gethomepage.dev/name: "Hubble UI"
-    gethomepage.dev/description: "eBPF network observability"
-    gethomepage.dev/group: "Cluster"
-    gethomepage.dev/icon: "cilium.png"
-    gethomepage.dev/href: "http://192.168.0.16"
-```
+Homepage's Kubernetes service discovery reads `Ingress`, Traefik `IngressRoute` and
+Gateway API `HTTPRoute` objects — **not** plain `Service` objects. TLS terminates at a
+Traefik instance outside the cluster and nothing in here creates those objects, so
+there is nothing for discovery to find and the dashboard is maintained by hand. That
+is a deliberate consequence of keeping the reverse proxy outside the cluster.
 
-`href` is required here. Homepage can infer a URL from an `Ingress`, but this cluster
-has none — Traefik lives outside it — so discovery runs against `Service` objects and
-the address has to be stated.
-
-Two things this depends on, both already configured: `config.kubernetes.mode: cluster`
-in the HelmRelease, and an `extraClusterRoles` entry granting read on `services`. The
-chart's built-in ClusterRole covers ingresses but **not** services, so without that
-extra rule annotated services are silently never found.
-
-Groups named in `gethomepage.dev/group` should also appear under `layout` in
-`settingsString` to control their order. Anything outside the cluster — Omni, Proxmox —
-is listed statically in the HelmRelease instead.
+The Kubernetes **widgets** (cluster and node CPU/memory) are unrelated to discovery and
+do work: they need `config.kubernetes.mode: cluster`, the chart's RBAC, and
+metrics-server.
 
 ## Dependency updates
 
@@ -287,6 +274,8 @@ kubectl top nodes
       `ReadWriteMany`, iSCSI for block volumes with snapshots and expansion).
 - [ ] **Scheduled etcd backups in Omni.**
 - [ ] **Monitoring stack.** Prometheus and Grafana, with Cilium and Hubble metrics.
+- [ ] **Gateway API via Cilium**, which would give in-cluster L7 routing and make
+      Homepage's `HTTPRoute` service discovery usable instead of a hand-kept list.
 
 ## Notes
 
