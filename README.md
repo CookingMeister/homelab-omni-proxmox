@@ -26,13 +26,34 @@ is a commit.
 
 | Node | IP | Role | vCPU | RAM | Disk |
 | --- | --- | --- | --- | --- | --- |
-| talos-05t-4cw | 192.168.0.224 | control-plane | 4 | 16 GB | 64 GB |
-| talos-zdx-y3b | 192.168.0.246 | control-plane | 4 | 16 GB | 64 GB |
 | talos-3z8-t6d | 192.168.0.77 | control-plane | 4 | 16 GB | 64 GB |
+| talos-05t-4cw | 192.168.0.78 | control-plane | 4 | 16 GB | 64 GB |
+| talos-zdx-y3b | 192.168.0.79 | control-plane | 4 | 16 GB | 64 GB |
 
 All three nodes are control planes running etcd, so the cluster tolerates the loss
 of one (quorum 2 of 3). They are untainted, so workloads schedule across all three
 and there are no dedicated worker nodes.
+
+Addresses are **static**, set per machine by Omni config patches
+(`500-static-ip-77` / `-78` / `-79`) rather than by DHCP reservation:
+
+```yaml
+machine:
+  network:
+    interfaces:
+      - interface: eth0
+        dhcp: false
+        addresses: ["192.168.0.78/24"]
+        routes:
+          - network: 0.0.0.0/0
+            gateway: 192.168.0.1
+    nameservers: ["192.168.0.1"]
+```
+
+Each patch is scoped to one machine with the label
+`omni.sidero.dev/machine: <machine-uuid>`; verify scoping with
+`omnictl get clustermachineconfigpatch <uuid>` before applying, since a
+mis-scoped patch would assign one address to every node.
 
 > Omni assigns node hostnames and reassigns them whenever a machine is
 > reprovisioned. Never pin a workload to a node by name — use labels.
@@ -275,7 +296,7 @@ Every node is an etcd member, so **only one node may be down at a time** — quo
 
 ```sh
 # find the leader (LEADER column) and the current lease holders
-talosctl -n 192.168.0.224,192.168.0.246,192.168.0.77 etcd status
+talosctl -n 192.168.0.77,192.168.0.78,192.168.0.79 etcd status
 kubectl get leases -n kube-system | grep l2announce
 ```
 
@@ -295,7 +316,7 @@ Before moving to the next node, confirm all three etcd members report the same
 ### Health checks
 
 ```sh
-talosctl -n 192.168.0.224 etcd members
+talosctl -n 192.168.0.77 etcd members
 kubectl -n kube-system exec ds/cilium -c cilium-agent -- cilium-dbg status
 flux get all -A
 kubectl top nodes
