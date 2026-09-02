@@ -68,6 +68,9 @@ spec:
           Infrastructure:
             style: row
             columns: 3
+          Storage:
+            style: row
+            columns: 3
 
       widgets:
         - kubernetes:
@@ -109,6 +112,16 @@ spec:
                 href: https://proxmox.home.fullstackchef.dev/
                 description: Hypervisor
                 icon: proxmox.png
+
+        - Storage:
+            - Proxmox NAS:
+                href: https://proxmox-nas.home.fullstackchef.dev/
+                description: Hypervisor hosting the NAS
+                icon: proxmox.png
+            - TrueNAS:
+                href: https://truenas.home.fullstackchef.dev/
+                description: TrueNAS Scale
+                icon: truenas.png
 
       bookmarks:
         - Documentation:
