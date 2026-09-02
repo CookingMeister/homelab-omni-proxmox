@@ -149,7 +149,6 @@ python3 -c "import yaml;yaml.safe_load(open('/etc/traefik/conf.d/services.yml'))
 systemctl restart traefik
 ```
 
-
 ```yaml
 http:
   routers:
@@ -312,6 +311,41 @@ kubectl uncordon <node>
 Before moving to the next node, confirm all three etcd members report the same
 `RAFT INDEX` with no errors. A node reports `Ready` before etcd has caught up, so
 `kubectl get nodes` alone is not a sufficient check.
+
+### Changing a node's IP
+
+Edit that machine's `500-static-ip-*` patch and apply it. Talos reboots the node onto
+the new address and **updates its own etcd peer URL** — no reprovision needed. The node
+is `NotReady` for two to three minutes. Do one node at a time; quorum is 2 of 3.
+
+Two pieces of state do **not** follow the node, and both must be checked afterwards:
+
+```sh
+# 1. Cilium keeps the old address in its node registry
+kubectl get ciliumnodes -o custom-columns=NAME:.metadata.name,ADDRESSES:.spec.addresses[*].ip
+kubectl -n kube-system rollout restart ds/cilium     # fix
+
+# 2. The kubernetes Service endpoints keep the old apiserver addresses
+kubectl get endpoints kubernetes -n default
+```
+
+Both fail in ways that mislead:
+
+- **Stale `CiliumNode`** breaks only cross-node traffic. A LoadBalancer service whose
+  pod happens to run on the same node that answers its ARP keeps working, so it looks
+  like one service broke rather than the CNI.
+- **Stale endpoints** leave `10.96.0.1` round-robining across dead apiservers, so
+  in-cluster clients fail a fraction of requests. A dashboard flickers between data and
+  an API error rather than going down. `kubectl` never shows this, because it reaches
+  the apiserver through Omni's proxy rather than the ClusterIP.
+
+The apiserver's lease reconciler does repair the endpoints on its own, logging
+`Resetting endpoints for master service "kubernetes"`, but only on its next restart.
+
+> When inspecting Cilium's backends, keep the context flag — `cilium-dbg service list`
+> prints backends on continuation lines, and grepping without `-A` shows only the first,
+> which makes a stale list look correct:
+> `kubectl -n kube-system exec ds/cilium -c cilium-agent -- cilium-dbg service list | grep -A4 10.96.0.1`
 
 ### Health checks
 
