@@ -1,0 +1,32 @@
+# k9s aliases for this cluster.
+#
+# Install by copying into k9s's config directory — find it with `k9s info`:
+#   Windows  %LOCALAPPDATA%\k9s\aliases.yaml
+#   Linux    ~/.config/k9s/aliases.yaml
+#   macOS    ~/Library/Application Support/k9s/aliases.yaml
+#
+# Type the alias at the k9s prompt, e.g. `:ks` for Flux Kustomizations.
+aliases:
+  # --- k9s defaults, kept so this file can replace the stock one ---
+  dp: deployments
+  sec: v1/secrets
+  jo: jobs
+  cr: clusterroles
+  crb: clusterrolebindings
+  ro: roles
+  rb: rolebindings
+  np: networkpolicies
+
+  # --- Flux ---
+  ks: kustomizations.kustomize.toolkit.fluxcd.io
+  hr: helmreleases.helm.toolkit.fluxcd.io
+  hrepo: helmrepositories.source.toolkit.fluxcd.io
+  hchart: helmcharts.source.toolkit.fluxcd.io
+  grepo: gitrepositories.source.toolkit.fluxcd.io
+
+  # --- Cilium ---
+  cnode: ciliumnodes.cilium.io
+  cep: ciliumendpoints.cilium.io
+  lbpool: ciliumloadbalancerippools.cilium.io
+  l2pol: ciliuml2announcementpolicies.cilium.io
+  cnp: ciliumnetworkpolicies.cilium.io

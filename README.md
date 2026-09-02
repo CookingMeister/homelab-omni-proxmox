@@ -91,6 +91,7 @@ clusters/talos-cluster-1/   Flux entrypoint — Kustomizations for the trees bel
 infrastructure/controllers/ Cluster-wide controllers (Cilium, metrics-server)
 infrastructure/configs/     Cluster-wide config depending on those controllers
 apps/talos-cluster-1/       Workloads (Homepage)
+k9s/                        Local k9s config — not applied to the cluster
 ```
 
 Reconcile order is `infra-controllers` → `infra-configs`, with `apps` depending on
@@ -346,6 +347,39 @@ The apiserver's lease reconciler does repair the endpoints on its own, logging
 > prints backends on continuation lines, and grepping without `-A` shows only the first,
 > which makes a stale list look correct:
 > `kubectl -n kube-system exec ds/cilium -c cilium-agent -- cilium-dbg service list | grep -A4 10.96.0.1`
+
+### Browsing the cluster with k9s
+
+[k9s](https://k9scli.io/) is a terminal UI over the same API — handy for watching a
+reconcile happen rather than re-running `flux get`. Nothing here depends on it.
+
+```sh
+k9s                  # current context
+k9s --context bob    # a different cluster, without changing your default
+```
+
+`:ctx` switches context **inside k9s only**, leaving your shell's context untouched —
+which is the safe way to look at another cluster, since `kubectl config use-context`
+is persistent and global.
+
+`k9s/aliases.yaml` in this repo adds shortcuts for the resources this cluster actually
+uses. Install it by copying into k9s's config directory (`k9s info` prints the path;
+on Linux it is `~/.config/k9s`):
+
+| Alias | Resource |
+| --- | --- |
+| `:ks` | Flux Kustomizations |
+| `:hr` / `:hrepo` / `:hchart` | HelmReleases / repositories / charts |
+| `:grepo` | GitRepositories |
+| `:cnode` | CiliumNodes — the registry that goes stale after an IP change |
+| `:lbpool` / `:l2pol` | LoadBalancer IP pool / L2 announcement policy |
+| `:cep` / `:cnp` | Cilium endpoints / network policies |
+
+Navigation: `/` filters, `Esc` backs out, `?` lists keybindings, `:q` quits. On a
+selected row — `l` logs, `d` describe, `y` YAML, `s` shell.
+
+> k9s honours `KUBECONFIG` like kubectl does. If it is exported, k9s sees only that
+> file and `:ctx` lists one context instead of all of them.
 
 ### Health checks
 
