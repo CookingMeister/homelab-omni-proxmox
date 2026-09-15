@@ -1,0 +1,73 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: local-path-provisioner
+  namespace: local-path-storage
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: local-path-provisioner
+      version: "0.0.38"
+      sourceRef:
+        kind: HelmRepository
+        name: containeroo
+        namespace: local-path-storage
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    # Talos has a read-only root filesystem. The chart's default path,
+    # /opt/local-path-provisioner, is not writable and the helper pod fails on
+    # mkdir. /var is the ephemeral partition and the only writable location that
+    # survives a reboot or a Talos upgrade.
+    #
+    # It does NOT survive `talosctl reset` or a reprovision from Omni, both of
+    # which wipe the ephemeral partition. Treat every volume here as disposable
+    # and back up anything that matters out of the cluster.
+    nodePathMap:
+      - node: DEFAULT_PATH_FOR_NON_LISTED_NODES
+        paths:
+          - /var/local-path-provisioner
+
+    storageClass:
+      create: true
+      name: local-path
+
+      # Deliberately NOT the cluster default. A volume from this class is a
+      # directory on one node's OS disk: the pod is pinned to that node for life
+      # and the data dies with it. A workload gets local storage only by naming
+      # this class, never by forgetting to name one. When democratic-csi lands,
+      # that becomes the default and nothing silently moves.
+      defaultClass: false
+
+      # The provisioner cannot move a volume, so the scheduler must place the pod
+      # before the volume exists — otherwise a volume appears on one node and the
+      # pod is scheduled onto another.
+      volumeBindingMode: WaitForFirstConsumer
+
+      # Retain, not Delete: deleting a PVC leaves the directory on the node
+      # instead of erasing it. Recovering a database someone dropped by accident
+      # is worth the occasional orphaned directory to clean up by hand.
+      reclaimPolicy: Retain
+
+    # The chart pins busybox to `latest`, which is unreproducible and invisible
+    # to Renovate. Pinned here and tracked by the customManager in renovate.json.
+    helperImage:
+      repository: docker.io/library/busybox
+      # renovate: image=docker.io/library/busybox
+      tag: "1.37.0"
+
+    # Nodes under-report memory to the scheduler because of Proxmox ballooning,
+    # so every workload here declares what it needs rather than relying on
+    # whatever headroom appears to be free.
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        memory: 128Mi

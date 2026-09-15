@@ -68,6 +68,9 @@ spec:
           Infrastructure:
             style: row
             columns: 3
+          Apps:
+            style: row
+            columns: 3
           Storage:
             style: row
             columns: 3
@@ -99,6 +102,12 @@ spec:
                 href: http://192.168.0.16
                 description: eBPF network observability
                 icon: cilium.png
+
+        - Apps:
+            - linkding:
+                href: https://links.home.fullstackchef.dev
+                description: Bookmark manager
+                icon: linkding.png
 
         - Infrastructure:
             # Bare *.png names resolve against the dashboard-icons CDN, so the

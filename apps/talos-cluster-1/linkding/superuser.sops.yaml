@@ -1,0 +1,28 @@
+# Created on first start by the linkding container, which runs createsuperuser
+# when both variables are set. Changing the password here does NOT change it in
+# the database - the container only creates the user if it does not exist.
+# Rotate it in the linkding web UI instead, then update this file to match.
+apiVersion: v1
+kind: Secret
+metadata:
+    name: linkding-superuser
+    namespace: linkding
+type: Opaque
+stringData:
+    LD_SUPERUSER_NAME: ENC[AES256_GCM,data:+n0driM=,iv:acDtpYqXrpqzP+JH7ZAji/NapQF58/RugLeUndy6F1E=,tag:SYQp+2RWUDIS/WRdUMH6IA==,type:str]
+    LD_SUPERUSER_PASSWORD: ENC[AES256_GCM,data:CGxYBG2YKxHDRWOaEC4T8xHtARhpEGU382X3VW3D190=,iv:1ocNwew7nfaf+eVAQxw5ZCxBm9dqb1A4a/uqZXNix3U=,tag:fe7lme9FdgW12QjeVU5DQw==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSAxSUFLa3ozM2xJTzZlNFVV
+            OVh3cW5ETyttYlduNkppd3J1MmU2NFVKaHlvCmY5eXI4amcxa0NBNTRmd293ejJD
+            SnR3MGJLNkFjSFROR0dPS0dSR25LT3cKLS0tIE5aT3NWUEFiRnVOMDlPbWhtYlRX
+            NXJ2VXozM2c4NU5RMGttTGlCaU1qTWMKRzoFDeUR77xDLNUg60MxwdAtpy1sDF/v
+            9R3+kIz/Nq6hP6VQV/V7qylVzvxxHmr2mmKSjdFMN98dJj3mCZtEsw==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1x5jsylzj5w978hahmpfkqwne3qkal89fvdp3qny7ctegl2k8ws9q2497fn
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-09-15T20:19:24Z"
+    mac: ENC[AES256_GCM,data:yuebO/dqQIUYDp15/OVyOV2vZsmqniLbeOcsr5h5CxvFpibAXlPE7IjWDIT+VzqQUpr4nco7Ih8gPTZZMRAH7/hFdMUncKPRZgsIYSDjHbqFJaGpPJValwD057jqcmI8pd+fr1Usqy9RdsO/ILgOZC48TR3VwBnnf8tpSsZ9ddo=,iv:WHMQAyVqIvGNxOkt4Krz9Cb3ii/oWfkKdDfM9/PqVDA=,tag:+HarGgJJJ1qacB3oSrupjg==,type:str]
+    version: 3.13.3

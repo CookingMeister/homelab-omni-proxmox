@@ -19,6 +19,8 @@ is a commit.
 | **Load balancing** | Cilium L2 announcements |
 | **Observability** | Hubble, metrics-server |
 | **Dashboard** | Homepage |
+| **Storage** | local-path-provisioner (node-local) |
+| **Apps** | linkding |
 | **Secrets** | SOPS + age |
 | **Hypervisor** | Proxmox VE 9.2 |
 
@@ -88,9 +90,9 @@ addresses, so there is no in-cluster ingress controller.
 
 ```text
 clusters/talos-cluster-1/   Flux entrypoint — Kustomizations for the trees below
-infrastructure/controllers/ Cluster-wide controllers (Cilium, metrics-server)
+infrastructure/controllers/ Cluster-wide controllers (Cilium, metrics-server, local-path-provisioner)
 infrastructure/configs/     Cluster-wide config depending on those controllers
-apps/talos-cluster-1/       Workloads (Homepage)
+apps/talos-cluster-1/       Workloads (Homepage, linkding)
 k9s/                        Local k9s config — not applied to the cluster
 ```
 
@@ -126,7 +128,8 @@ whichever node holds the lease, and fails over automatically.
 | --- | --- |
 | 192.168.0.15 | Homepage |
 | 192.168.0.16 | Hubble UI |
-| 192.168.0.17-34 | available |
+| 192.168.0.17 | linkding |
+| 192.168.0.18-34 | available |
 
 Pin an address by annotating the Service:
 
@@ -186,6 +189,66 @@ http:
           - url: "http://192.168.0.15:3000"
 ```
 
+## Storage
+
+[local-path-provisioner](https://github.com/rancher/local-path-provisioner) provides
+the `local-path` StorageClass. A volume is a directory on one node's OS disk, created
+on demand by a helper pod. There is no replication and no shared filesystem — this is
+the smallest thing that makes a PVC bind, not real storage.
+
+Three consequences follow from that, and all three are deliberate:
+
+- **`local-path` is not the cluster default.** A workload gets local storage only by
+  naming the class in its PVC. Nothing lands on a node-bound volume by forgetting to
+  choose. When democratic-csi arrives it becomes the default and nothing already
+  running moves.
+- **`volumeBindingMode: WaitForFirstConsumer`.** The provisioner cannot move a volume
+  after it exists, so the scheduler picks the node first. Once bound, the pod is
+  pinned to that node for the life of the volume — if the node is down, the pod stays
+  `Pending` rather than starting elsewhere with an empty disk.
+- **`reclaimPolicy: Retain`.** Deleting a PVC leaves the directory in place instead of
+  erasing it. The cost is an orphaned directory to remove by hand after a genuine
+  deletion, which is the cheaper mistake.
+
+### Why the path is under /var
+
+Talos has a read-only root filesystem. The chart's default, `/opt/local-path-provisioner`,
+is not writable and the helper pod fails on `mkdir`. Volumes live at
+`/var/local-path-provisioner` instead, on the ephemeral partition.
+
+> `/var` survives reboots and Talos upgrades. It does **not** survive `talosctl reset`
+> or a reprovision from Omni — both wipe the ephemeral partition. Anything here that
+> matters needs a backup outside the cluster.
+
+### Pod Security
+
+Talos enforces the Pod Security `baseline` profile cluster-wide, and `baseline` forbids
+`hostPath` volumes. The helper pod mounts the node filesystem as a hostPath to create
+and remove volume directories, so provisioning fails with an admission error unless its
+namespace is exempted:
+
+```yaml
+metadata:
+  name: local-path-storage
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+```
+
+The exemption is scoped to that one namespace. Workloads that merely *consume* a
+volume need nothing — a PVC-backed hostPath volume is not a hostPath volume in the pod
+spec, so `linkding` runs under `baseline` unchanged.
+
+### Checking it
+
+```sh
+kubectl get storageclass
+kubectl get pv,pvc -A
+kubectl -n local-path-storage logs deploy/local-path-provisioner
+```
+
+A PVC stuck in `Pending` with no events is normal until a pod consumes it — that is
+`WaitForFirstConsumer` working, not a failure.
+
 ## Dashboard
 
 Homepage is configured entirely in Git, in its HelmRelease under `config`. Services
@@ -202,6 +265,66 @@ The Kubernetes **widgets** (cluster and node CPU/memory) are unrelated to discov
 do work: they need `config.kubernetes.mode: cluster`, the chart's RBAC, and
 metrics-server.
 
+## Bookmarks
+
+[linkding](https://github.com/sissbruecker/linkding) is a bookmark manager — tags,
+full-text search, a browser extension and a REST API. It was chosen over
+[karakeep](https://karakeep.app/) deliberately: karakeep wants a Meilisearch index, a
+headless Chrome for page archiving and an AI backend for tagging, which is four
+workloads and three kinds of state where linkding is one container and one SQLite
+file. On a cluster whose only storage is a directory on a node's disk, that difference
+decides it. Revisit karakeep once there is real storage and a reason to want
+full-page archiving.
+
+State lives on a 2 Gi `local-path` volume at `/etc/linkding/data`, so the pod is
+pinned to whichever node bound it. **There is no backup.** Use the export in
+Settings → General before doing anything to that node.
+
+### The admin user
+
+The container runs `createsuperuser` on first start when `LD_SUPERUSER_NAME` and
+`LD_SUPERUSER_PASSWORD` are both set. They come from `superuser.sops.yaml` alongside
+the HelmRelease, encrypted with SOPS like every other secret here.
+
+> These take effect **once**. After the user exists the container ignores them, so
+> editing the encrypted file does not rotate the password — change it in the web UI
+> and update the file to match.
+
+### Publishing it
+
+linkding is a Django app, so every login and every bookmark save is a POST checked
+against `CSRF_TRUSTED_ORIGINS`. Traefik terminates TLS and forwards the original
+`Host`, so the browser sends an `https://` Origin that Django does not recognise. The
+symptom is specific and easy to misread: the page loads fine and looks healthy, then
+the login form returns "CSRF verification failed". Set the public URL, with its
+scheme, in `LD_CSRF_TRUSTED_ORIGINS` in the HelmRelease — it is the same class of
+gotcha as `HOMEPAGE_ALLOWED_HOSTS`.
+
+Then add the router to Traefik's file provider, merging into the existing blocks:
+
+```yaml
+http:
+  routers:
+    linkding:
+      rule: "Host(`links.home.fullstackchef.dev`)"
+      entryPoints: [websecure]
+      service: linkding
+      tls:
+        certResolver: letsencrypt
+  services:
+    linkding:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.0.17:9090"
+```
+
+### The Homepage widget
+
+Homepage ships a `linkding` widget showing bookmark counts. It needs an API token
+generated in linkding's own settings, which cannot be done before the app is running,
+so it is not configured here. Add the token as a SOPS-encrypted secret and reference
+it from the Homepage HelmRelease if you want it.
+
 ## Dependency updates
 
 [Renovate](https://docs.renovatebot.com/) raises PRs for Helm chart updates, driven by
@@ -211,7 +334,8 @@ manager, which reads chart versions straight out of the HelmReleases.
 | Update | Behaviour |
 | --- | --- |
 | Patch | Automerged after a 3-day cooling-off period |
-| Minor (metrics-server, homepage) | Grouped into one PR for review |
+| Minor (metrics-server, homepage, linkding) | Grouped into one PR for review |
+| local-path-provisioner (any) | Never automerged, 7-day minimum age |
 | Cilium (any) | Never automerged, 7-day minimum age, own PR |
 | `clusters/*/flux-system/**` | Ignored |
 
@@ -275,6 +399,7 @@ kubectl -n flux-system create secret generic sops-age \
 | --- | --- |
 | Homepage | <https://k8s.home.fullstackchef.dev> · <http://192.168.0.15:3000> |
 | Hubble UI | <http://192.168.0.16> |
+| linkding | <https://links.home.fullstackchef.dev> · <http://192.168.0.17:9090> |
 
 > `homepage.home.fullstackchef.dev` is a **separate, pre-existing Homepage** outside
 > this cluster. The cluster dashboard is `k8s.home.fullstackchef.dev`.
@@ -285,6 +410,7 @@ Or via port-forward:
 export KUBECONFIG=.kube/talos-cluster-1-kubeconfig.yaml
 kubectl -n homepage    port-forward svc/homepage  3000:3000
 kubectl -n kube-system port-forward svc/hubble-ui 8080:80
+kubectl -n linkding    port-forward svc/linkding  9090:9090
 ```
 
 ## Operations
@@ -392,10 +518,11 @@ kubectl top nodes
 
 ## Roadmap
 
-- [ ] **Persistent storage.** There is no StorageClass — each node has only its OS
-      disk, so nothing provisions PVCs and stateful workloads cannot run. Shared
-      storage from TrueNAS Scale is planned, via `democratic-csi` (NFS for
-      `ReadWriteMany`, iSCSI for block volumes with snapshots and expansion).
+- [ ] **Shared persistent storage.** `local-path` covers single-replica workloads but
+      pins each one to a node with no replication and no backup. Shared storage from
+      TrueNAS Scale is planned, via `democratic-csi` — iSCSI for block volumes with
+      snapshots and expansion, NFS for `ReadWriteMany`. Note that SQLite over NFS is a
+      corruption risk, so linkding wants the iSCSI class, not the NFS one.
 - [ ] **Scheduled etcd backups in Omni.**
 - [ ] **Monitoring stack.** Prometheus and Grafana, with Cilium and Hubble metrics.
 - [ ] **Gateway API via Cilium**, which would give in-cluster L7 routing and make

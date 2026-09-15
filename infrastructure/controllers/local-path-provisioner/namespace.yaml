@@ -1,0 +1,12 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: local-path-storage
+  labels:
+    # The provisioner's helper pod mounts the node's filesystem as a hostPath to
+    # create and remove volume directories. Talos enforces the Pod Security
+    # "baseline" profile cluster-wide, which forbids hostPath, so provisioning
+    # fails with an admission error unless this namespace is exempted.
+    # The exemption is scoped to this namespace only.
+    pod-security.kubernetes.io/enforce: privileged

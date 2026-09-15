@@ -25,14 +25,14 @@
         "apps/**/*.yaml"
       ],
       "matchStrings": [
-        "#\\s*renovate:\\s*image=(?<depName>\\S+)\\s+tag:\\s*[\"']?(?<currentValue>[^\"'\\s]+)"
+        "#\s*renovate:\s*image=(?<depName>\S+)\s+tag:\s*[\"']?(?<currentValue>[^\"'\s]+)"
       ],
       "datasourceTemplate": "docker"
     }
   ],
   "packageRules": [
     {
-      "description": "Patch updates are low risk and can merge themselves. Overridden for Cilium below.",
+      "description": "Patch updates are low risk and can merge themselves. Overridden for Cilium and local-path-provisioner below.",
       "matchUpdateTypes": ["patch"],
       "automerge": true,
       "automergeType": "pr",
@@ -40,9 +40,17 @@
     },
     {
       "description": "Group minor bumps of the supporting stack into one reviewable PR.",
-      "matchPackageNames": ["metrics-server", "homepage"],
+      "matchPackageNames": ["metrics-server", "homepage", "linkding"],
       "matchUpdateTypes": ["minor"],
       "groupName": "cluster addons"
+    },
+    {
+      "description": "local-path-provisioner owns every persistent volume in the cluster, and its chart is still 0.0.x, so even a z-bump can change provisioning behaviour. Never automerged. Listed after the patch rule so it overrides it.",
+      "matchPackageNames": ["local-path-provisioner"],
+      "groupName": "storage",
+      "automerge": false,
+      "minimumReleaseAge": "7 days",
+      "addLabels": ["storage", "review-carefully"]
     },
     {
       "description": "Cilium is the CNI and the kube-proxy replacement. A bad upgrade takes cluster networking with it, so it is never automerged and always lands on its own. Listed last so it overrides the patch-automerge rule above.",

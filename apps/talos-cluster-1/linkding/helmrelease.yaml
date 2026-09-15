@@ -1,0 +1,92 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: linkding
+  namespace: linkding
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: linkding
+      version: "3.0.0"
+      sourceRef:
+        kind: HelmRepository
+        name: pascaliske
+        namespace: linkding
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    # The image tag is left to the chart's appVersion, which this chart keeps in
+    # step with upstream — unlike homepage, which needs its tag pinned by hand.
+    # Renovate bumps the chart version above and the image follows.
+
+    persistentVolumeClaim:
+      create: true
+      size: 2Gi
+      accessMode: ReadWriteOnce
+      # Named explicitly because local-path is not the cluster default; see
+      # infrastructure/controllers/local-path-provisioner. The volume is a
+      # directory on one node, so this pod is pinned to that node once bound.
+      storageClassName: local-path
+      # linkding keeps its SQLite database and uploaded assets here.
+      mountPath: /etc/linkding/data
+
+    service:
+      # Cilium L2 announcements hand out this address from lan-pool
+      # (infrastructure/configs/cilium-l2.yaml). Pinned so the Traefik LXC
+      # backend address stays stable across redeploys.
+      type: LoadBalancer
+      annotations:
+        io.cilium/lb-ipam-ips: "192.168.0.17"
+
+    ports:
+      http:
+        enabled: true
+        port: 9090
+
+    # Traefik runs outside the cluster and nothing in here creates Ingress,
+    # IngressRoute or Certificate objects. TLS terminates at the LXC.
+    ingressRoute:
+      create: false
+    certificate:
+      create: false
+
+    env:
+      - name: TZ
+        value: America/Halifax
+
+      # linkding is a Django app, so every login and every bookmark save is a
+      # POST that Django checks against CSRF_TRUSTED_ORIGINS. Traefik terminates
+      # TLS and forwards the original Host, so the browser sends an https Origin
+      # that Django does not recognise and the login form fails with "CSRF
+      # verification failed" while the page itself loads fine. The scheme is
+      # required and the value must be the public URL, not the LAN address.
+      - name: LD_CSRF_TRUSTED_ORIGINS
+        value: "https://links.home.fullstackchef.dev"
+
+      # Created on first start only, from the SOPS-encrypted secret alongside
+      # this file. Once the user exists these are ignored.
+      - name: LD_SUPERUSER_NAME
+        valueFrom:
+          secretKeyRef:
+            name: linkding-superuser
+            key: LD_SUPERUSER_NAME
+      - name: LD_SUPERUSER_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: linkding-superuser
+            key: LD_SUPERUSER_PASSWORD
+
+    # Nodes under-report memory to the scheduler because of Proxmox ballooning,
+    # so requests are declared rather than left to whatever looks free.
+    resources:
+      requests:
+        cpu: 50m
+        memory: 192Mi
+      limits:
+        memory: 512Mi
