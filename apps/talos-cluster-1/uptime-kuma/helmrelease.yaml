@@ -1,0 +1,64 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: uptime-kuma
+  namespace: uptime-kuma
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: uptime-kuma
+      version: "4.2.0"
+      sourceRef:
+        kind: HelmRepository
+        name: uptime-kuma
+        namespace: uptime-kuma
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    # The image tag follows the chart's appVersion (Uptime Kuma 2.x). Renovate
+    # bumps the chart version above and the image follows.
+
+    podEnv:
+      - name: TZ
+        value: America/Halifax
+
+    volume:
+      enabled: true
+      accessMode: ReadWriteOnce
+      size: 2Gi
+      # Named explicitly because local-path is not the cluster default; see
+      # infrastructure/controllers/local-path-provisioner. The volume is a
+      # directory on one node, so this pod is pinned to that node once bound.
+      # Uptime Kuma keeps its SQLite database (monitors, history, users) here.
+      storageClassName: local-path
+
+    # SQLite on a RWO volume cannot be opened by two pods at once, so the old
+    # pod must stop before the new one starts.
+    strategy:
+      type: Recreate
+
+    service:
+      # Cilium L2 announcements hand out this address from lan-pool
+      # (infrastructure/configs/cilium-l2.yaml). Pinned so the Traefik LXC
+      # backend address stays stable across redeploys.
+      # Public name: uptimecluster.home.fullstackchef.dev. Traefik must pass
+      # WebSocket upgrades through; the UI is a single socket.io connection.
+      type: LoadBalancer
+      port: 3001
+      annotations:
+        io.cilium/lb-ipam-ips: "192.168.0.18"
+
+    # Nodes under-report memory to the scheduler because of Proxmox ballooning,
+    # so requests are declared rather than left to whatever looks free.
+    resources:
+      requests:
+        cpu: 50m
+        memory: 192Mi
+      limits:
+        memory: 768Mi

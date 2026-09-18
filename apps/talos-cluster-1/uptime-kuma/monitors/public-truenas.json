@@ -1,0 +1,8 @@
+{
+  "type": "http",
+  "name": "TrueNAS",
+  "parent_name": "public",
+  "url": "https://truenas.home.fullstackchef.dev/",
+  "interval": 60,
+  "max_retries": 2
+}

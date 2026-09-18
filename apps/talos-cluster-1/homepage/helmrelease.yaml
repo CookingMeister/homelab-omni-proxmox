@@ -108,6 +108,10 @@ spec:
                 href: https://links.home.fullstackchef.dev
                 description: Bookmark manager
                 icon: linkding.png
+            - Uptime Kuma:
+                href: https://uptimecluster.home.fullstackchef.dev
+                description: Uptime monitoring
+                icon: uptime-kuma.png
 
         - Infrastructure:
             # Bare *.png names resolve against the dashboard-icons CDN, so the

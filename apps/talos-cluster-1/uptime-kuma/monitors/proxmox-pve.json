@@ -1,0 +1,9 @@
+{
+  "type": "http",
+  "name": "pve",
+  "parent_name": "proxmox",
+  "url": "https://192.168.0.101:8006",
+  "interval": 60,
+  "max_retries": 2,
+  "ignore_tls": true
+}

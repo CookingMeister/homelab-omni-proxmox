@@ -1,0 +1,8 @@
+{
+  "type": "http",
+  "name": "Homepage",
+  "parent_name": "cluster",
+  "url": "http://192.168.0.15:3000",
+  "interval": 60,
+  "max_retries": 2
+}

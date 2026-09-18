@@ -1,0 +1,8 @@
+{
+  "type": "http",
+  "name": "Homepage",
+  "parent_name": "public",
+  "url": "https://k8s.home.fullstackchef.dev",
+  "interval": 60,
+  "max_retries": 2
+}

@@ -1,0 +1,9 @@
+{
+  "type": "port",
+  "name": "OPNsense DNS",
+  "parent_name": "infra",
+  "hostname": "192.168.0.1",
+  "port": 53,
+  "interval": 60,
+  "max_retries": 2
+}

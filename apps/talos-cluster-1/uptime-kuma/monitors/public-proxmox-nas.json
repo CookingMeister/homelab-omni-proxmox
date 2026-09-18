@@ -1,0 +1,8 @@
+{
+  "type": "http",
+  "name": "Proxmox NAS",
+  "parent_name": "public",
+  "url": "https://proxmox-nas.home.fullstackchef.dev/",
+  "interval": 60,
+  "max_retries": 2
+}

@@ -1,0 +1,9 @@
+{
+  "type": "http",
+  "name": "pve-dell-02",
+  "parent_name": "proxmox",
+  "url": "https://192.168.0.102:8006",
+  "interval": 60,
+  "max_retries": 2,
+  "ignore_tls": true
+}

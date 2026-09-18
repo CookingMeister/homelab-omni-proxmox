@@ -1,0 +1,32 @@
+# ntfy.sh topic Flux posts to. On the public ntfy.sh server a topic name is
+# the only access control - anyone who knows it can read and publish - so it
+# is SOPS-encrypted here. Subscribe to it in the ntfy app; read it with:
+#   sops -d infrastructure/configs/flux-notifications/ntfy-provider.sops.yaml
+#
+# Flux has no ntfy provider, so the "generic" provider POSTs its raw JSON
+# event and ntfy's templating turns it into a readable notification.
+# The headers key is YAML, parsed by the notification-controller.
+apiVersion: v1
+kind: Secret
+metadata:
+    name: ntfy-provider
+    namespace: flux-system
+type: Opaque
+stringData:
+    address: ENC[AES256_GCM,data:GCqgGlrYhXDWJlA38p8fcLS1esvpgHV3QDgP7PMS5xjdgf0qU7Qrah57nTn8Cl5ZuF/U,iv:kALvePuXG3kEVZhBqGACUmnO+S8uzDELlJ5bAo2KjlM=,tag:sT6tO2sE7hVbqpu4AOARYA==,type:str]
+    headers: ENC[AES256_GCM,data:ZoiVFDPSncNiyE4ZnnXHQ2SCq4gfzy44WbzxqJLE5XmzeIAvPpxcTTa/FXu5FOTOJfwx8RAfqP7KQ4cxB6jg+LIGHR1ZGRARmUQ9u55oIxql3cwQVnB3bDnPHPVrqGuxVSGfVPtd9gZgKXDc+7Ses7XNTX9tKhhAJ80cyIxFHXZNltOk3mxgb4mbJOsGLy1yxWy6zS3fspiv7If2OdETF/CTjGcuXx1Efhh5m0YSbVMDKzdUNDHrcEm7trXSxGLRTzWDOJyuK1LmvbTRM1EYIiCLC2fXoCGvNaLuZq9i0a3AIhnVjgJgWaCNaT9KHWrhcISwt0HoFp0=,iv:9/eWRZKbSv2lnM6n0RMYmF5SRaWLS7rKHoT/7GZEEhA=,tag:5KRs1wrAlDLPqL8EIKm4Lg==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBBODJyZDBRNHBUT09ia3pr
+            U21FSVJmR0pjWUJVSHlWTEg0ZHFaeDJselQ0CjZEdmV0d21QNXd2cUtSRHpuN3VX
+            VHRCOHhiV0xJdExzV2lJVldsWWJSQm8KLS0tIEdTTXFjUWREZEM0RWNNRzNDMGNE
+            VTZlWmhCcnpUWWZNV1d3cVlIZytoWmMKQDT2CYU4IkA+Dd47Ij8YcjscKUmUc0CF
+            CnnQpeWVY7A37Isutw6qqsEyKlrABGBLuUyCRBaJHhNTGPhkgI3kkg==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1x5jsylzj5w978hahmpfkqwne3qkal89fvdp3qny7ctegl2k8ws9q2497fn
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-09-18T23:13:55Z"
+    mac: ENC[AES256_GCM,data:GEr08bucy7mPgUtmm3siAz+uZSFFDlzNzRpxv0RdSfTVWh13xplkjQVhlkxTO0KEqbFmqEyb8BRrPFYZb0MC2z/k3wQG3TBbGKdhkW0Tzp+iFSKatEqRpmYL/92BwDE4SJQgohOLW+j4Bp5a2hy5afKE2MsXrsTCL3d1mMuTm5g=,iv:+zabZbsTwQHqSenqJ/vt9IyaXLSYe6w4iR/FvCUAAKg=,tag:0Rr69x/yVFZ/nBhjX9a7dA==,type:str]
+    version: 3.13.3

@@ -7,7 +7,9 @@
 # `io.cilium/lb-ipam-ips: "192.168.0.x"` on the Service):
 #   .15  homepage
 #   .16  hubble-ui
-#   .17-.34  unallocated
+#   .17  linkding
+#   .18  uptime-kuma
+#   .19-.34  unallocated
 apiVersion: cilium.io/v2
 kind: CiliumLoadBalancerIPPool
 metadata:

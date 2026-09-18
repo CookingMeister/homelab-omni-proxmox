@@ -1,0 +1,8 @@
+{
+  "type": "http",
+  "name": "Jellyfin (NAS)",
+  "parent_name": "homelab",
+  "url": "http://NAS_IP:8096/health",
+  "interval": 60,
+  "max_retries": 2
+}

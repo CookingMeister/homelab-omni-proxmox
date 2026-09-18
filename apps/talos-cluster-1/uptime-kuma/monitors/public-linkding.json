@@ -1,0 +1,8 @@
+{
+  "type": "http",
+  "name": "linkding",
+  "parent_name": "public",
+  "url": "https://links.home.fullstackchef.dev/health",
+  "interval": 60,
+  "max_retries": 2
+}

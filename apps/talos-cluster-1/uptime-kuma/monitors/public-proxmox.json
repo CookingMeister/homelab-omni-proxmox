@@ -1,0 +1,8 @@
+{
+  "type": "http",
+  "name": "Proxmox",
+  "parent_name": "public",
+  "url": "https://proxmox.home.fullstackchef.dev/",
+  "interval": 60,
+  "max_retries": 2
+}

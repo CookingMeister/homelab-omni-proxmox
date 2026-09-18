@@ -1,0 +1,8 @@
+{
+  "type": "http",
+  "name": "Vaultwarden",
+  "parent_name": "homelab",
+  "url": "https://VAULTWARDEN_HOST/alive",
+  "interval": 60,
+  "max_retries": 2
+}

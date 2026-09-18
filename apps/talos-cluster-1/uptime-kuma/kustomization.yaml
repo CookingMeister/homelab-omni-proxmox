@@ -1,0 +1,40 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - helmrepository.yaml
+  - helmrelease.yaml
+  - autokuma-credentials.sops.yaml
+  - autokuma.yaml
+
+# One file per monitor; the filename (minus .json) is the AutoKuma ID that
+# "parent_name" refers to. Add a file here AND to this list.
+#
+# ./monitors-placeholders holds monitors for hosts outside the cluster whose
+# addresses are not filled in yet. To enable one, fix its URL, move it into
+# ./monitors and list it below (together with homelab.json, its group).
+configMapGenerator:
+  - name: autokuma-monitors
+    namespace: uptime-kuma
+    files:
+      - monitors/cluster-homepage.json
+      - monitors/cluster-hubble-ui.json
+      - monitors/cluster-linkding.json
+      - monitors/cluster.json
+      - monitors/infra-omni.json
+      - monitors/infra-opnsense-dns.json
+      - monitors/infra.json
+      - monitors/proxmox-elitebook1.json
+      - monitors/proxmox-lenovo1.json
+      - monitors/proxmox-pve-dell-01.json
+      - monitors/proxmox-pve-dell-02.json
+      - monitors/proxmox-pve-lenovo-01.json
+      - monitors/proxmox-pve.json
+      - monitors/proxmox.json
+      - monitors/public-homepage.json
+      - monitors/public-linkding.json
+      - monitors/public-proxmox-nas.json
+      - monitors/public-proxmox.json
+      - monitors/public-truenas.json
+      - monitors/public.json

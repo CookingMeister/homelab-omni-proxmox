@@ -1,0 +1,93 @@
+---
+# Alert sources cannot use a namespace wildcard, so every namespace that holds
+# a HelmRelease or HelmRepository is listed. A new app namespace must be added
+# to BOTH alerts below, or its failures go unreported.
+#
+# Anything that stops Flux from syncing at all (a lost deploy key, a bad
+# commit, a failed apply) surfaces on the flux-system GitRepository or on a
+# Kustomization, so those two kinds are what matter most.
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Alert
+metadata:
+  name: flux-errors
+  namespace: flux-system
+spec:
+  summary: talos-cluster-1
+  providerRef:
+    name: ntfy
+  eventSeverity: error
+  eventSources:
+    - kind: GitRepository
+      name: "*"
+      namespace: flux-system
+    - kind: Kustomization
+      name: "*"
+      namespace: flux-system
+    - kind: HelmRelease
+      name: "*"
+      namespace: kube-system
+    - kind: HelmRelease
+      name: "*"
+      namespace: local-path-storage
+    - kind: HelmRelease
+      name: "*"
+      namespace: homepage
+    - kind: HelmRelease
+      name: "*"
+      namespace: linkding
+    - kind: HelmRelease
+      name: "*"
+      namespace: uptime-kuma
+    - kind: HelmRepository
+      name: "*"
+      namespace: kube-system
+    - kind: HelmRepository
+      name: "*"
+      namespace: local-path-storage
+    - kind: HelmRepository
+      name: "*"
+      namespace: homepage
+    - kind: HelmRepository
+      name: "*"
+      namespace: linkding
+    - kind: HelmRepository
+      name: "*"
+      namespace: uptime-kuma
+---
+# Successful changes: a HelmRelease installed or upgraded (for example a
+# Renovate automerge landing) or a Kustomization applying new objects. Sent
+# at low priority so they do not buzz the phone.
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Alert
+metadata:
+  name: flux-changes
+  namespace: flux-system
+spec:
+  summary: talos-cluster-1
+  providerRef:
+    name: ntfy
+  eventSeverity: info
+  eventSources:
+    - kind: Kustomization
+      name: "*"
+      namespace: flux-system
+    - kind: HelmRelease
+      name: "*"
+      namespace: kube-system
+    - kind: HelmRelease
+      name: "*"
+      namespace: local-path-storage
+    - kind: HelmRelease
+      name: "*"
+      namespace: homepage
+    - kind: HelmRelease
+      name: "*"
+      namespace: linkding
+    - kind: HelmRelease
+      name: "*"
+      namespace: uptime-kuma
+  # Errors are already sent by flux-errors; drop them here so each failure
+  # arrives once.
+  exclusionList:
+    - "(?i)fail"
+    - "(?i)error"

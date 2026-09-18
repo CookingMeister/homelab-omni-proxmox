@@ -1,0 +1,8 @@
+{
+  "type": "http",
+  "name": "Omni",
+  "parent_name": "infra",
+  "url": "https://omni.fullstackchef.dev",
+  "interval": 60,
+  "max_retries": 2
+}

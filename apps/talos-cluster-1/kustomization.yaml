@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
   - homepage
   - linkding
+  - uptime-kuma

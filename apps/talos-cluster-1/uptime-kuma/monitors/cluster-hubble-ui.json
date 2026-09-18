@@ -1,0 +1,8 @@
+{
+  "type": "http",
+  "name": "Hubble UI",
+  "parent_name": "cluster",
+  "url": "http://192.168.0.16",
+  "interval": 60,
+  "max_retries": 2
+}

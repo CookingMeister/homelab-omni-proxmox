@@ -17,6 +17,12 @@
       "apps/**/*.yaml"
     ]
   },
+  "kubernetes": {
+    "managerFilePatterns": [
+      "infrastructure/**/*.yaml",
+      "apps/**/*.yaml"
+    ]
+  },
   "customManagers": [
     {
       "description": "Track container image tags pinned inside HelmRelease values. The flux manager only sees chart versions, so an image pinned to work around a stale chart would otherwise never be updated.",
