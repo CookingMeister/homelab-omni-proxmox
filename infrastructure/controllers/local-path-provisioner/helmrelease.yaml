@@ -60,7 +60,7 @@ spec:
     helperImage:
       repository: docker.io/library/busybox
       # renovate: image=docker.io/library/busybox
-      tag: "1.37.0"
+      tag: "1.38.0"
 
     # Nodes under-report memory to the scheduler because of Proxmox ballooning,
     # so every workload here declares what it needs rather than relying on
