@@ -1,0 +1,9 @@
+{
+  "type": "port",
+  "name": "Traefik (LXC)",
+  "parent_name": "infra",
+  "hostname": "192.168.0.217",
+  "port": 443,
+  "interval": 60,
+  "max_retries": 2
+}

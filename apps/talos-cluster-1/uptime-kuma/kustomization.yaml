@@ -10,10 +10,6 @@ resources:
 
 # One file per monitor; the filename (minus .json) is the AutoKuma ID that
 # "parent_name" refers to. Add a file here AND to this list.
-#
-# ./monitors-placeholders holds monitors for hosts outside the cluster whose
-# addresses are not filled in yet. To enable one, fix its URL, move it into
-# ./monitors and list it below (together with homelab.json, its group).
 configMapGenerator:
   - name: autokuma-monitors
     namespace: uptime-kuma
@@ -22,8 +18,13 @@ configMapGenerator:
       - monitors/cluster-hubble-ui.json
       - monitors/cluster-linkding.json
       - monitors/cluster.json
+      - monitors/homelab-jellyfin.json
+      - monitors/homelab-vaultwarden.json
+      - monitors/homelab.json
       - monitors/infra-omni.json
       - monitors/infra-opnsense-dns.json
+      - monitors/infra-pihole-dns.json
+      - monitors/infra-traefik.json
       - monitors/infra.json
       - monitors/proxmox-elitebook1.json
       - monitors/proxmox-lenovo1.json

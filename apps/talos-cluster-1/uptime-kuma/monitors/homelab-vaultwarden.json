@@ -1,8 +1,8 @@
 {
   "type": "http",
-  "name": "Jellyfin (NAS)",
+  "name": "Vaultwarden",
   "parent_name": "homelab",
-  "url": "http://NAS_IP:8096/health",
+  "url": "https://vaultwarden.home.fullstackchef.dev/alive",
   "interval": 60,
   "max_retries": 2
 }

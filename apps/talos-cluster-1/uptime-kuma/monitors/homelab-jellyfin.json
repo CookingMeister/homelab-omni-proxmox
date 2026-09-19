@@ -1,8 +1,8 @@
 {
   "type": "http",
-  "name": "Vaultwarden",
+  "name": "Jellyfin",
   "parent_name": "homelab",
-  "url": "https://VAULTWARDEN_HOST/alive",
+  "url": "https://jellyfin.home.fullstackchef.dev/health",
   "interval": 60,
   "max_retries": 2
 }
