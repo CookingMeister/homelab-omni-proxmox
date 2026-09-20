@@ -1,0 +1,10 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: democratic-csi
+  labels:
+    # The CSI node plugin mounts host paths and needs hostPID, which the
+    # cluster-wide "baseline" PodSecurity default (set in the Talos machine
+    # config) rejects. Only this namespace is exempted.
+    pod-security.kubernetes.io/enforce: privileged

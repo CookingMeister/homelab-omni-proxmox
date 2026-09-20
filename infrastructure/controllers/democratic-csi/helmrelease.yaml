@@ -1,0 +1,73 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: democratic-csi-iscsi
+  namespace: democratic-csi
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: democratic-csi
+      version: "0.15.1"
+      sourceRef:
+        kind: HelmRepository
+        name: democratic-csi
+        namespace: democratic-csi
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    csiDriver:
+      name: org.democratic-csi.iscsi
+
+    driver:
+      # The whole driver config — including the TrueNAS API key — lives in the
+      # SOPS-encrypted secret alongside this file. `driver.config.driver` must
+      # still be set here; the chart reads it for purposes beyond the secret.
+      existingConfigSecret: truenas-iscsi-config
+      config:
+        driver: freenas-api-iscsi
+
+    node:
+      # Required so the node plugin can nsenter into the host to run iscsiadm.
+      hostPID: true
+      driver:
+        extraEnv:
+          - name: ISCSIADM_HOST_STRATEGY
+            value: nsenter
+          # Verified on Talos 1.13.5 with the siderolabs/iscsi-tools extension.
+          # Talos 1.12.5 briefly moved these binaries under
+          # /usr/local/lib/containers/iscsid/, so re-check this path after a
+          # Talos upgrade if volumes suddenly fail to attach.
+          - name: ISCSIADM_HOST_PATH
+            value: /usr/local/sbin/iscsiadm
+        # Talos keeps initiatorname.iscsi here, NOT in the /usr/local/etc/iscsi
+        # that democratic-csi's README suggests.
+        iscsiDirHostPath: /etc/iscsi
+        iscsiDirHostPathType: Directory
+
+    storageClasses:
+      - name: truenas-iscsi
+        # local-path stays the default until the apps are migrated and this has
+        # proven itself.
+        defaultClass: false
+        reclaimPolicy: Delete
+        volumeBindingMode: Immediate
+        allowVolumeExpansion: true
+        parameters:
+          fsType: ext4
+        mountOptions: []
+        secrets:
+          provisioner-secret:
+          controller-publish-secret:
+          node-stage-secret:
+          node-publish-secret:
+          controller-expand-secret:
+
+    # Snapshots need the external snapshot-controller, which Talos does not
+    # ship. Left empty until that is installed.
+    volumeSnapshotClasses: []

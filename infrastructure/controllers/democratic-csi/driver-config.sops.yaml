@@ -1,0 +1,27 @@
+# democratic-csi driver config for the TrueNAS box at 192.168.0.144.
+# The whole config is encrypted because it carries the TrueNAS API key, so
+# edit it with `sops infrastructure/controllers/democratic-csi/driver-config.sops.yaml`
+# rather than a plain editor.
+apiVersion: v1
+kind: Secret
+metadata:
+    name: truenas-iscsi-config
+    namespace: democratic-csi
+type: Opaque
+stringData:
+    driver-config-file.yaml: ENC[AES256_GCM,data:2uXKxS2AtKfIi9ZfD2LaY4pDYGfi8EQ0copPVshQzvTKAvnrFMayz8mAPy+XGpHhocYQeo2L0MZS6KebKL/gsI/aWjYTFzZfBdY4rHC+SHj/NY5DryqYLnQ89NB3ITyj6x1h74wQUgsXT9DzMdA0ei5aLL5a1ZfZDigWu5ZgiFfsO5ZS1s0uhwl44b2l91I8GQN71zHiNdh918eKGIWNVXLlm5vgYLEqcFR+AlhUWVNGKayC0aXf0NEYUn/vKV0qFEYUhbTE2ufSe3MlAygPjRImARCiHzUU8+rTvNWYkhGRfDx9sfUIsVh7L1LCRrAKgsvK8BwRLvWEnOix3ADLKtOxDVoLppEDcjaipnAXghW79n25WLo+JdGcchKJWK6p5ziFa2LfVYKuak+Wr28nG+XMmjZNkWg35SaeONAPkM6yGRMBAqUBhtt809iZ8SywRhxCKmplNcrm+v/w+Eboqg9t6FQXWzgg2QuwUUs6fVCKZ/89Y1PvxyO4j/2k5vr/M10t9JOvsIhD+CdSwPMeFXyLQnia7f0mUk7L/fNhboQN3VskV62mKK9cuhqJbZAe8M8y8CtSze9x765FpcnETgllwwgaXBdTAuYy8eVlWY3r8ldgG57q5kl6kbfFPK564fNTBAnYfduKwOJW4RWuO3Xr52wR+k4fWpmjOlhRNd5HbhXb5zx2EcT2HHSWQBwjf9HME6FocF64T21kIFxeWY28QRMxMd1D5/fkplc2Op3P3DRxEIfaD8ggkatrf6WSzfxZbBB60LHTCv6DGe9VCUlR0y5/ZSe9CcqU5nwBkzctpEdwCPcvnzVDgESjS4U4sl89FnaM3dfXEZxdj2clsZDsq6ouV1l0GpKCglBccm7+d9sCvgDEq1rDo+M30yG9VUnQN6kqLjwVjfjkATvrC5FBtydt/MZmXh7sRI/78LgnPyFaXM3d53jpSfyc6T6IsGHrxuA5sWAHeKSTMHKwC1CiIarRlAW9X1gkxtIVhCDJacxbx1mRw1Wj4atEShnXygrNK4b8a+UoqK2+uHLCoYt3C1O6p8X1HclqTuvMDpUmxJU6L8Umc0OwsKEv8rPfhaTvKEMbSMdL1GcpnSEpDcBGRS0MSlfN/jSrtv+1RvdZxBBifR3MHu8YFRPtWM65PqUV228WZB7Fxm49Y5guPb0b2bkumd5GOXSXmcBTWdt0xWlCP7THoNrlTG63jPfMFsL6oFOgC3DmJgSm0ioHB9YhRqN1xmwMXa3MqIoJknhq1HjkbTSDqfty23elYl63VEe33l6o8w3tb9SERgqXHdxdZzCgiUg94WzI+njHVpYiBlzHWU/y5KFHv/FA/IcAr/VbM60XbyZAqWaZY13ONvujRpB536METuL1jVKqoqCq3yyo0vJ9yI8sNEpTCBWP95gopPkdlnvWv1Vs9maxSK/xERCbsyrbqzX8ns50O0GH/PHAc6Lz2OOhCY8O3P2UbEBCTojgxYCFjCMONCFq83Fr2W1i,iv:rebskeSAkWXC+h6Mvt6ViAs9ty+gXzznRcJnVQsuNXg=,tag:ob7ZlrDTZgi41xxLbmTbZA==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBRejNoY1VRM0xJak1uODR2
+            V0NJc3Njb1Y5V0xidnlkM0phNnhUWUs0V0VFCks3cVdDZGg2T1JkVEFpcEFQeW9D
+            LzNrL0VMbkRkTnYwOS80c29Ka2pRSUEKLS0tIG4xUWJMUEVtRWY4KzM5cEVMVkVq
+            UEViZlExNlB3czhqbGo5a2hmTHFUTUEKeXXL/ko4J2n1JRpbeAv3ArwSEXs0U/IA
+            S96kTK5wJ6FOiPFWVX6NR176Rl4gA5cbX/nAv33Rkru8aAbyW5RDJw==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1x5jsylzj5w978hahmpfkqwne3qkal89fvdp3qny7ctegl2k8ws9q2497fn
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-09-20T20:46:12Z"
+    mac: ENC[AES256_GCM,data:knXc/haXDpfb/Rcog6qgeCk0gsbahP7HnXoFzvyRgYhwA4wJ2Y6I0pIayjScatMrDIyoT0U2vGAcSgO1qmK0mOqjs1Fhy6qJ4MmceIBJxRICLxwpQxtQdXG2oiOG0gFCvyAZ6oe78tI5u0bjYWMKtYU9okXmOsnfvRtMbi8acKg=,iv:Vcg/PPrVlgPvauokgsk/gpq6mJ5kMQsAaDjMBVfxu+s=,tag:N1BKo+7aYfV0BAyGjsQVeQ==,type:str]
+    version: 3.13.3
