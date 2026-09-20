@@ -48,7 +48,11 @@ spec:
         # Talos keeps initiatorname.iscsi here, NOT in the /usr/local/etc/iscsi
         # that democratic-csi's README suggests.
         iscsiDirHostPath: /etc/iscsi
-        iscsiDirHostPathType: Directory
+        # Empty disables kubelet's hostPath type check. /etc/iscsi IS a real
+        # directory on the node (talosctl ls -l /etc confirms it), but the
+        # check still fails with "is not a directory" because kubelet resolves
+        # the path differently on Talos.
+        iscsiDirHostPathType: ""
 
     storageClasses:
       - name: truenas-iscsi
