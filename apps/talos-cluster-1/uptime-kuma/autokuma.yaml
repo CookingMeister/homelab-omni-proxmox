@@ -4,21 +4,6 @@
 # SQLite database. Every monitor it creates carries an "AutoKuma" tag;
 # monitors without that tag (clicked together in the UI) are left alone.
 # Removing a file deletes its monitor after a 60s grace period.
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: autokuma-data
-  namespace: uptime-kuma
-spec:
-  # AutoKuma's own map of AutoKuma ID -> Uptime Kuma monitor ID. Losing it
-  # makes AutoKuma forget which monitors it owns, so it is persisted.
-  storageClassName: local-path
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 64Mi
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -91,4 +76,4 @@ spec:
             name: autokuma-monitors
         - name: data
           persistentVolumeClaim:
-            claimName: autokuma-data
+            claimName: autokuma-state
