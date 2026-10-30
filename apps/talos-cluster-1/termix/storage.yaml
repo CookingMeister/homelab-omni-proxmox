@@ -1,0 +1,19 @@
+---
+# Everything Termix keeps lives in /app/data: the encrypted SQLite database,
+# the .env holding the keys that decrypt it (generated on first boot),
+# installed plugins and any session recordings. Lose the .env and the stored
+# hosts, passwords and SSH keys cannot be read again, so this claim is
+# declared here where nothing else can delete it, on TrueNAS iSCSI rather
+# than NFS because SQLite over NFS is a corruption risk.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: termix-data
+  namespace: termix
+spec:
+  storageClassName: truenas-iscsi
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi

@@ -1,0 +1,103 @@
+---
+# Termix, a web SSH client. Upstream dropped its Helm chart, so this follows
+# their plain-manifest Kubernetes install. The pod runs nginx on 8080 in front
+# of the Node backend on 30001; both are in the one container.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: termix
+  namespace: termix
+spec:
+  replicas: 1
+  # SQLite is single-writer and the volume is ReadWriteOnce, so the old pod
+  # must be gone before the new one starts.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: termix
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: termix
+    spec:
+      # Termix never talks to the Kubernetes API, so do not hand it a token.
+      automountServiceAccountToken: false
+      # The entrypoint skips its chown-and-gosu step when it is not started as
+      # root, so the pod runs as the image's own node user (1000) from the
+      # start and fsGroup makes the TrueNAS volume writable for it.
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: termix
+          # Tags without a suffix are the "standard" plugin set; -minimal and
+          # -full exist too. Renovate bumps this tag.
+          image: ghcr.io/termix-ssh/termix:26.10.6
+          # Nothing in the non-root path needs extra privileges, and this pod
+          # will hold credentials for most of the homelab.
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: PORT
+              value: "8080"
+            - name: TZ
+              value: America/Halifax
+          ports:
+            - name: http
+              containerPort: 8080
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+          # First boot generates keys and builds the database, so give it a
+          # couple of minutes before the readiness probe starts judging.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 18
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+          # Nodes under-report memory to the scheduler because of Proxmox
+          # ballooning, so requests are declared rather than left to whatever
+          # looks free.
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: termix-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: termix
+  namespace: termix
+  annotations:
+    # Cilium L2 announcements hand out this address from lan-pool
+    # (infrastructure/configs/cilium-l2.yaml). Pinned so the Traefik LXC
+    # backend address stays stable across redeploys.
+    io.cilium/lb-ipam-ips: "192.168.0.19"
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: termix
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
