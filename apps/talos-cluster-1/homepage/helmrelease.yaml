@@ -108,6 +108,10 @@ spec:
                 href: https://links.home.fullstackchef.dev
                 description: Bookmark manager
                 icon: linkding.png
+            - Termix:
+                href: https://termix.home.fullstackchef.dev
+                description: Web SSH client
+                icon: termix.png
             - Uptime Kuma:
                 href: https://uptimecluster.home.fullstackchef.dev
                 description: Uptime monitoring

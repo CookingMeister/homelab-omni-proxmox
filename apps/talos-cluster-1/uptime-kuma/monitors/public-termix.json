@@ -1,0 +1,8 @@
+{
+  "type": "http",
+  "name": "Termix",
+  "parent_name": "public",
+  "url": "https://termix.home.fullstackchef.dev/health",
+  "interval": 60,
+  "max_retries": 2
+}

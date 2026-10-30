@@ -1,0 +1,8 @@
+{
+  "type": "http",
+  "name": "Termix",
+  "parent_name": "cluster",
+  "url": "http://192.168.0.19:8080/health",
+  "interval": 60,
+  "max_retries": 2
+}

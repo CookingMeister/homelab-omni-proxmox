@@ -18,6 +18,7 @@ configMapGenerator:
       - monitors/cluster-homepage.json
       - monitors/cluster-hubble-ui.json
       - monitors/cluster-linkding.json
+      - monitors/cluster-termix.json
       - monitors/cluster.json
       - monitors/homelab-jellyfin.json
       - monitors/homelab-vaultwarden.json
@@ -38,5 +39,6 @@ configMapGenerator:
       - monitors/public-linkding.json
       - monitors/public-proxmox-nas.json
       - monitors/public-proxmox.json
+      - monitors/public-termix.json
       - monitors/public-truenas.json
       - monitors/public.json
