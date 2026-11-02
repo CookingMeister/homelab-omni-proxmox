@@ -93,6 +93,7 @@ clusters/talos-cluster-1/   Flux entrypoint — Kustomizations for the trees bel
 infrastructure/controllers/ Cluster-wide controllers (Cilium, metrics-server, local-path-provisioner)
 infrastructure/configs/     Cluster-wide config depending on those controllers
 apps/talos-cluster-1/       Workloads (Homepage, linkding)
+scripts/truenas-maintenance/ Stop and restore the apps around a TrueNAS reboot
 k9s/                        Local k9s config — not applied to the cluster
 ```
 
@@ -438,6 +439,31 @@ kubectl uncordon <node>
 Before moving to the next node, confirm all three etcd members report the same
 `RAFT INDEX` with no errors. A node reports `Ready` before etcd has caught up, so
 `kubectl get nodes` alone is not a sufficient check.
+
+### TrueNAS maintenance
+
+Every persistent volume lives on TrueNAS over iSCSI, and TrueNAS takes about three
+minutes to reboot — longer than the two minutes the nodes wait for a lost iSCSI
+connection. After that, ext4 aborts its journal and remounts the volume **read-only**.
+The pod keeps running and its health check still passes, but it cannot save anything,
+and nothing recovers it until the pod is deleted. (Rebooting TrueNAS twice on
+2026-11-01 did exactly this to linkding, Uptime Kuma, AutoKuma and Termix.)
+
+Stop the apps first, so their volumes unmount cleanly:
+
+```sh
+bash scripts/truenas-maintenance/pre-reboot.sh    # suspend Flux, scale apps to 0, wait for detach
+# reboot or shut down TrueNAS (or the Proxmox host under it) and wait for it to return
+bash scripts/truenas-maintenance/post-reboot.sh   # wait for TrueNAS, restore replicas, resume Flux
+```
+
+The affected workloads are discovered from the `truenas-iscsi` StorageClass, so new
+apps are included without editing the scripts. Both accept `--dry-run`. The previous
+replica counts are kept in `~/.truenas-maintenance.state` between the two runs.
+
+`post-reboot.sh --check-only` verifies that every TrueNAS volume is mounted
+read-write and is worth running after any unexpected TrueNAS or network outage. If it
+reports `READ-ONLY`, snapshot that volume in TrueNAS and delete the pod so it remounts.
 
 ### Changing a node's IP
 
