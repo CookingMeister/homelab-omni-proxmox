@@ -21,8 +21,14 @@ spec:
     remediation:
       retries: 3
   values:
-    # The image tag follows the chart's appVersion (Uptime Kuma 2.x). Renovate
-    # bumps the chart version above and the image follows.
+    # The chart lags the application — chart 4.2.0 (August) still ships Uptime
+    # Kuma 2.5.0 while upstream is on 2.5.x patch releases, one of which fixes
+    # a security issue — so the image tag is pinned here rather than inherited
+    # from the chart's appVersion. Renovate tracks this line via the
+    # customManager in renovate.json; it cannot see a chart's appVersion.
+    image:
+      # renovate: image=louislam/uptime-kuma
+      tag: "2.5.9"
 
     podEnv:
       - name: TZ
