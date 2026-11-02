@@ -138,7 +138,11 @@ log "TrueNAS is answering. Giving the pool and iSCSI targets ${SETTLE_SECONDS}s 
 sleep "$SETTLE_SECONDS"
 
 log "Restarting the democratic-csi controller so it reconnects at once..."
-k -n "$CSI_NAMESPACE" rollout restart "deployment/$CSI_CONTROLLER" >/dev/null
+# kubectl prints a long "would violate PodSecurity" notice for this namespace on
+# every restart; it is expected, so only real errors are shown.
+if ! restart_err=$(k -n "$CSI_NAMESPACE" rollout restart "deployment/$CSI_CONTROLLER" 2>&1 >/dev/null); then
+  die "could not restart the CSI controller: $restart_err"
+fi
 k -n "$CSI_NAMESPACE" rollout status "deployment/$CSI_CONTROLLER" --timeout=180s >/dev/null ||
   warn "the CSI controller is not ready yet; new volumes may fail until it is"
 
