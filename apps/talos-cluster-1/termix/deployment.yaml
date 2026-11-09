@@ -38,7 +38,7 @@ spec:
         - name: termix
           # Tags without a suffix are the "standard" plugin set; -minimal and
           # -full exist too. Renovate bumps this tag.
-          image: ghcr.io/termix-ssh/termix:26.11.0
+          image: ghcr.io/termix-ssh/termix:26.11.1
           # Nothing in the non-root path needs extra privileges, and this pod
           # will hold credentials for most of the homelab.
           securityContext:
