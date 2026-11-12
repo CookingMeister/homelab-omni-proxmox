@@ -28,7 +28,7 @@ spec:
     # customManager in renovate.json; it cannot see a chart's appVersion.
     image:
       # renovate: image=louislam/uptime-kuma
-      tag: "2.5.9"
+      tag: "2.5.11"
 
     podEnv:
       - name: TZ
