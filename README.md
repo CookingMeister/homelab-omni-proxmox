@@ -24,6 +24,10 @@ is a commit.
 | **Secrets** | SOPS + age |
 | **Hypervisor** | Proxmox VE 9.2 |
 
+![Sidero Omni home page showing talos-cluster-1 healthy, with three connected machines all allocated to the cluster](docs/images/sidero-omni.png)
+
+*The Omni dashboard: one healthy cluster, three machines connected and in the cluster.*
+
 ## Topology
 
 | Node | IP | Role | vCPU | RAM | Disk |
