@@ -1,0 +1,112 @@
+---
+# smart-paywall-proxy fetches whatever URL it is given through 13ft and ladder.
+# The app refuses private targets itself, but the providers resolve names on
+# their own, so these policies are the real guard: the providers may reach the
+# public internet on 80/443 and nothing on the LAN, the cluster, or the node.
+#
+# Selecting a pod in an egress or ingress section switches that direction to
+# default-deny for that pod only; nothing outside this namespace is affected.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: providers
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/component: provider
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: smart-paywall-proxy
+    # Kubelet readiness probes come from the node itself.
+    - fromEntities:
+        - host
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+    - toCIDRSet:
+        - cidr: 0.0.0.0/0
+          except:
+            - 0.0.0.0/8
+            - 10.0.0.0/8
+            - 100.64.0.0/10
+            - 127.0.0.0/8
+            - 169.254.0.0/16
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+            - 224.0.0.0/3
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+            - port: "443"
+              protocol: TCP
+---
+# The app itself needs DNS (it checks where a target resolves before asking a
+# provider) and the three backends, and nothing else. Ingress is left open:
+# LAN clients and the Traefik LXC reach it through the LoadBalancer address.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: smart-paywall-proxy
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: smart-paywall-proxy
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: ladder13ft
+      toPorts:
+        - ports:
+            - port: "5000"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: ladder-go
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: redis
+      toPorts:
+        - ports:
+            - port: "6379"
+              protocol: TCP
+---
+# Redis takes connections from the app only, and makes none.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: redis
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: smart-paywall-proxy
+      toPorts:
+        - ports:
+            - port: "6379"
+              protocol: TCP
+    - fromEntities:
+        - host
+  egress: []

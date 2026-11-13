@@ -108,6 +108,11 @@ spec:
                 href: https://convertx.home.fullstackchef.dev
                 description: File converter
                 icon: convertx.png
+            - Smart Paywall Proxy:
+                # LAN only until the Traefik LXC gets a route for it.
+                href: http://192.168.0.22:3000
+                description: Paywall bypass (13ft, ladder, archive)
+                icon: mdi-lock-open-variant
             - SearXNG:
                 href: https://search.home.fullstackchef.dev
                 description: Metasearch engine

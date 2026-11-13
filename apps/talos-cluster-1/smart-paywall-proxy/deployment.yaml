@@ -1,0 +1,92 @@
+---
+# smart-paywall-proxy (github.com/CookingMeister/smart-paywall-proxy): tries
+# 13ft, then ladder, then redirects to archive.today, caching in Redis. The
+# helpers live in providers.yaml. Replaces the docker-bypasser LXC 119.
+# LAN-only: it fetches arbitrary URLs, so keep it off the public internet.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smart-paywall-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: smart-paywall-proxy
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: smart-paywall-proxy
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        # The image's node user.
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: smart-paywall-proxy
+          # Public image built by the repo's GitHub Actions on a v* tag.
+          image: ghcr.io/cookingmeister/smart-paywall-proxy:2.0.1
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: TZ
+              value: America/Halifax
+            - name: TIMEOUT
+              value: "5000"
+            # Service names match the old compose services, so these are
+            # the same URLs as before apart from 13ft's port (5000, not 8080).
+            - name: REDIS_URL
+              value: redis://redis:6379
+            - name: LADDER13FT_URL
+              value: http://ladder13ft:5000
+            - name: LADDER_GO_URL
+              value: http://ladder-go:8080
+          ports:
+            - name: http
+              containerPort: 3000
+          # /health stays 200 when Redis is down (the cache is optional), so
+          # a Redis restart never takes the proxy out of service.
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          # Nodes under-report memory to the scheduler because of Proxmox
+          # ballooning, so requests are declared rather than left to whatever
+          # looks free. Provider responses are capped at 5 MB in the app.
+          resources:
+            requests:
+              cpu: 50m
+              memory: 96Mi
+            limits:
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smart-paywall-proxy
+  annotations:
+    # Cilium L2 announcements hand out this address from lan-pool
+    # (infrastructure/configs/cilium-l2.yaml). Pinned so the Traefik LXC
+    # backend address stays stable across redeploys.
+    io.cilium/lb-ipam-ips: "192.168.0.22"
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: smart-paywall-proxy
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http

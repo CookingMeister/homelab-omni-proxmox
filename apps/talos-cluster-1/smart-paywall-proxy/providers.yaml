@@ -1,0 +1,196 @@
+---
+# The two fetchers smart-paywall-proxy asks in turn, plus its Redis cache. All
+# three are ClusterIP only: nothing outside the namespace talks to them, and
+# networkpolicy.yaml enforces that.
+#
+# 13ft: Python/gunicorn, listens on 5000. Runs as its own non-root user and
+# writes a gunicorn control socket under its home directory.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ladder13ft
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ladder13ft
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ladder13ft
+        app.kubernetes.io/component: provider
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ladder13ft
+          # Upstream tags drop the v prefix. Renovate bumps this.
+          image: ghcr.io/wasi-master/13ft:0.5.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - name: http
+              containerPort: 5000
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 50m
+              memory: 96Mi
+            limits:
+              memory: 384Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ladder13ft
+spec:
+  selector:
+    app.kubernetes.io/name: ladder13ft
+  ports:
+    - name: http
+      port: 5000
+      targetPort: http
+---
+# ladder (everywall/ladder): Go, listens on 8080. Runs without the community
+# ruleset: tested 2026-11-13 against the sites in use and it made no
+# difference. Enable with RULESET if a site needs it.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ladder-go
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ladder-go
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ladder-go
+        app.kubernetes.io/component: provider
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ladder-go
+          # Upstream tags keep the v prefix. Renovate bumps this.
+          image: ghcr.io/everywall/ladder:v0.0.23
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          env:
+            # Only smart-paywall-proxy uses it; its own form is never exposed.
+            - name: DISABLE_FORM
+              value: "true"
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 20m
+              memory: 48Mi
+            limits:
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ladder-go
+spec:
+  selector:
+    app.kubernetes.io/name: ladder-go
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+# Redis as a pure LRU cache: no persistence, so an emptyDir is enough and a
+# restart only costs cache hits (the app keeps serving without it).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: redis
+    spec:
+      automountServiceAccountToken: false
+      # Started as the image's redis user directly, so the entrypoint skips
+      # its root-only chown/su-exec step and no capabilities are needed.
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 1000
+        runAsNonRoot: true
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: redis
+          image: docker.io/library/redis:7.4-alpine
+          args:
+            - redis-server
+            - --save
+            - ""
+            - --appendonly
+            - "no"
+            - --maxmemory
+            - 256mb
+            - --maxmemory-policy
+            - allkeys-lru
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - name: redis
+              containerPort: 6379
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            periodSeconds: 15
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          # maxmemory 256mb plus Redis's own overhead.
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 320Mi
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+spec:
+  selector:
+    app.kubernetes.io/name: redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis

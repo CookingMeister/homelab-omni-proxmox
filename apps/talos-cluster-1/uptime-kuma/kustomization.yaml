@@ -20,6 +20,7 @@ configMapGenerator:
       - monitors/cluster-hubble-ui.json
       - monitors/cluster-linkding.json
       - monitors/cluster-searxng.json
+      - monitors/cluster-smart-paywall-proxy.json
       - monitors/cluster-termix.json
       - monitors/cluster.json
       - monitors/homelab-jellyfin.json

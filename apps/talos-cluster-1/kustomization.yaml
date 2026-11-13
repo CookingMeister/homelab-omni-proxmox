@@ -6,5 +6,6 @@ resources:
   - homepage
   - linkding
   - searxng
+  - smart-paywall-proxy
   - termix
   - uptime-kuma
