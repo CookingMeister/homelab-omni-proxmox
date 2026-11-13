@@ -47,12 +47,11 @@ spec:
             # The first account can always be created; nobody after that.
             - name: ACCOUNT_REGISTRATION
               value: "false"
-            # No Traefik route exists for ConvertX yet, so it is reached over
-            # plain http on the LAN address and the session cookie must be
-            # allowed without the Secure flag. Set back to "false" once a
-            # Traefik hostname (TLS) fronts it.
+            # Session cookies are Secure-only, which works because Traefik
+            # terminates TLS at convertx.home.fullstackchef.dev. Logging in via
+            # http://192.168.0.21:3000 directly will not stick; use the hostname.
             - name: HTTP_ALLOWED
-              value: "true"
+              value: "false"
             - name: AUTO_DELETE_EVERY_N_HOURS
               value: "24"
           ports:

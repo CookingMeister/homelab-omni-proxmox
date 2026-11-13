@@ -1,0 +1,8 @@
+{
+  "type": "http",
+  "name": "ConvertX",
+  "parent_name": "public",
+  "url": "https://convertx.home.fullstackchef.dev/",
+  "interval": 60,
+  "max_retries": 2
+}

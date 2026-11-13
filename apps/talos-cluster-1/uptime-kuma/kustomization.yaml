@@ -37,6 +37,7 @@ configMapGenerator:
       - monitors/proxmox-pve-lenovo-01.json
       - monitors/proxmox-pve.json
       - monitors/proxmox.json
+      - monitors/public-convertx.json
       - monitors/public-homepage.json
       - monitors/public-linkding.json
       - monitors/public-proxmox-nas.json

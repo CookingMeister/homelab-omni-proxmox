@@ -105,8 +105,7 @@ spec:
 
         - Apps:
             - ConvertX:
-                # LAN only until the Traefik LXC gets a route for it.
-                href: http://192.168.0.21:3000
+                href: https://convertx.home.fullstackchef.dev
                 description: File converter
                 icon: convertx.png
             - SearXNG:
