@@ -16,3 +16,8 @@ keys.txt
 
 # talosconfig generated from Omni (omnictl talosconfig)
 talosconfig*
+
+# Local cross-harness agent instructions and handoff (never commit)
+/AGENTS.md
+/CLAUDE.md
+/HANDOFF.md
