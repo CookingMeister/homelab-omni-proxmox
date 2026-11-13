@@ -1,0 +1,8 @@
+{
+  "type": "http",
+  "name": "Smart Paywall Proxy",
+  "parent_name": "public",
+  "url": "https://bypass.home.fullstackchef.dev/health",
+  "interval": 60,
+  "max_retries": 2
+}

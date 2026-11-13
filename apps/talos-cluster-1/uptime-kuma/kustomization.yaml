@@ -44,6 +44,7 @@ configMapGenerator:
       - monitors/public-proxmox-nas.json
       - monitors/public-proxmox.json
       - monitors/public-searxng.json
+      - monitors/public-smart-paywall-proxy.json
       - monitors/public-termix.json
       - monitors/public-truenas.json
       - monitors/public.json

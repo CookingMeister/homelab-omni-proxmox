@@ -109,8 +109,8 @@ spec:
                 description: File converter
                 icon: convertx.png
             - Smart Paywall Proxy:
-                # LAN only until the Traefik LXC gets a route for it.
-                href: http://192.168.0.22:3000
+                # LAN only: the Traefik route must never be published publicly.
+                href: https://bypass.home.fullstackchef.dev
                 description: Paywall bypass (13ft, ladder, archive)
                 icon: mdi-lock-open-variant
             - SearXNG:
