@@ -5,6 +5,11 @@ use_default_settings: true
 
 general:
   instance_name: SearXNG
+  # Since late 2026 the wikipedia, wikidata and openstreetmap engines refuse to
+  # load without this: Wikimedia and OSM require API clients to name an
+  # operator contact, and SearXNG puts it in their User-Agent. It is sent to
+  # them with every query, so it points at the public repo, not an email.
+  contact_url: https://github.com/CookingMeister/homelab-omni-proxmox
 
 server:
   # Private LAN instance behind the Traefik LXC. The limiter needs a Valkey
