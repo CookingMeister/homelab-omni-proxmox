@@ -1,0 +1,22 @@
+# Only overrides live here; everything else comes from the defaults shipped in
+# the image. secret_key is deliberately absent: SEARXNG_SECRET from the
+# SOPS-encrypted secret supplies it.
+use_default_settings: true
+
+general:
+  instance_name: SearXNG
+
+server:
+  # Private LAN instance behind the Traefik LXC. The limiter needs a Valkey
+  # instance to track clients and exists to fend off bots on public
+  # instances, so it stays off.
+  limiter: false
+  image_proxy: true
+
+search:
+  safe_search: 0
+  # json lets Open WebUI (and anything else on the LAN) use this instance as
+  # its web-search backend.
+  formats:
+    - html
+    - json

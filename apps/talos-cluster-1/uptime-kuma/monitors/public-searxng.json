@@ -1,0 +1,8 @@
+{
+  "type": "http",
+  "name": "SearXNG",
+  "parent_name": "public",
+  "url": "https://search.home.fullstackchef.dev/healthz",
+  "interval": 60,
+  "max_retries": 2
+}

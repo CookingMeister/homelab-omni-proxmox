@@ -104,6 +104,15 @@ spec:
                 icon: cilium.png
 
         - Apps:
+            - ConvertX:
+                # LAN only until the Traefik LXC gets a route for it.
+                href: http://192.168.0.21:3000
+                description: File converter
+                icon: convertx.png
+            - SearXNG:
+                href: https://search.home.fullstackchef.dev
+                description: Metasearch engine
+                icon: searxng.png
             - linkding:
                 href: https://links.home.fullstackchef.dev
                 description: Bookmark manager

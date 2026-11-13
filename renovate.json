@@ -52,6 +52,11 @@
       "groupName": "cluster addons"
     },
     {
+      "description": "SearXNG tags are YYYY.M.D-<commit>. Docker versioning treats the commit as a compatibility suffix that never matches the next release, so updates would stall without this.",
+      "matchPackageNames": ["docker.io/searxng/searxng"],
+      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-[0-9a-f]+$"
+    },
+    {
       "description": "local-path-provisioner owns every persistent volume in the cluster, and its chart is still 0.0.x, so even a z-bump can change provisioning behaviour. Never automerged. Listed after the patch rule so it overrides it.",
       "matchPackageNames": ["local-path-provisioner"],
       "groupName": "storage",

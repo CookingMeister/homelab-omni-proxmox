@@ -1,0 +1,99 @@
+---
+# ConvertX, a self-hosted file converter (ffmpeg, LibreOffice, ImageMagick and
+# friends behind one web UI). Replaces the community-script LXC 124 on
+# pve-lenovo-01. That LXC had the host iGPU passed through; the Talos VMs do
+# not, so ffmpeg runs on CPU here. Fine for occasional use, slow for video.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: convertx
+  namespace: convertx
+spec:
+  replicas: 1
+  # SQLite is single-writer and the volume is ReadWriteOnce, so the old pod
+  # must be gone before the new one starts.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: convertx
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: convertx
+    spec:
+      # ConvertX never talks to the Kubernetes API, so do not hand it a token.
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: convertx
+          # The image bundles every converter and is several GB; the first
+          # pull onto each node takes a while. Renovate bumps this tag.
+          image: ghcr.io/c4illin/convertx:v0.20.0
+          securityContext:
+            allowPrivilegeEscalation: false
+          env:
+            - name: TZ
+              value: America/Halifax
+            # Signs login sessions. Without a fixed value every restart
+            # generates a new one and logs everybody out.
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: convertx
+                  key: JWT_SECRET
+            # The first account can always be created; nobody after that.
+            - name: ACCOUNT_REGISTRATION
+              value: "false"
+            # No Traefik route exists for ConvertX yet, so it is reached over
+            # plain http on the LAN address and the session cookie must be
+            # allowed without the Secure flag. Set back to "false" once a
+            # Traefik hostname (TLS) fronts it.
+            - name: HTTP_ALLOWED
+              value: "true"
+            - name: AUTO_DELETE_EVERY_N_HOURS
+              value: "24"
+          ports:
+            - name: http
+              containerPort: 3000
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 30
+          # Nodes under-report memory to the scheduler because of Proxmox
+          # ballooning, so requests are declared. The limit leaves room for
+          # LibreOffice and ffmpeg, which spike well above the idle footprint.
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 2Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: convertx-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: convertx
+  namespace: convertx
+  annotations:
+    # Cilium L2 announcements hand out this address from lan-pool
+    # (infrastructure/configs/cilium-l2.yaml). Pinned so the Traefik LXC
+    # backend address stays stable across redeploys.
+    io.cilium/lb-ipam-ips: "192.168.0.21"
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: convertx
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http

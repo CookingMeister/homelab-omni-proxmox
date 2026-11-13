@@ -1,0 +1,100 @@
+---
+# SearXNG, a metasearch engine. Stateless: preferences live in browser
+# cookies, so there is no volume and the pod can move freely between nodes.
+# Replaces the community-script LXC 116 on pve-dell-02.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: searxng
+  namespace: searxng
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: searxng
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: searxng
+    spec:
+      # SearXNG never talks to the Kubernetes API, so do not hand it a token.
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: searxng
+          # Upstream publishes date-plus-commit tags daily; renovate.json has a
+          # regex-versioning rule so the commit suffix does not stall updates.
+          image: docker.io/searxng/searxng:2026.11.13-219b63b20
+          securityContext:
+            allowPrivilegeEscalation: false
+          env:
+            - name: TZ
+              value: America/Halifax
+            - name: SEARXNG_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: searxng
+                  key: SEARXNG_SECRET
+          ports:
+            - name: http
+              containerPort: 8080
+          volumeMounts:
+            # The entrypoint expects to own /etc/searxng, so it gets a
+            # writable emptyDir with only settings.yml projected into it.
+            - name: config
+              mountPath: /etc/searxng
+            - name: settings
+              mountPath: /etc/searxng/settings.yml
+              subPath: settings.yml
+              readOnly: true
+            - name: cache
+              mountPath: /var/cache/searxng
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 30
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 60
+          # Nodes under-report memory to the scheduler because of Proxmox
+          # ballooning, so requests are declared rather than left to whatever
+          # looks free.
+          resources:
+            requests:
+              cpu: 50m
+              memory: 160Mi
+            limits:
+              memory: 512Mi
+      volumes:
+        - name: config
+          emptyDir: {}
+        - name: settings
+          configMap:
+            name: searxng-settings
+        - name: cache
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: searxng
+  namespace: searxng
+  annotations:
+    # Cilium L2 announcements hand out this address from lan-pool
+    # (infrastructure/configs/cilium-l2.yaml). Pinned so the Traefik LXC
+    # backend address stays stable across redeploys.
+    io.cilium/lb-ipam-ips: "192.168.0.20"
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: searxng
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

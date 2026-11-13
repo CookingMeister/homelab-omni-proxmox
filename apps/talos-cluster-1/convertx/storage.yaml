@@ -1,0 +1,17 @@
+---
+# ConvertX keeps its SQLite account database plus uploaded and converted files
+# in /app/data. Files are purged by AUTO_DELETE_EVERY_N_HOURS, so most of this
+# is transient working space; the accounts are what must survive. TrueNAS
+# iSCSI rather than NFS because SQLite over NFS is a corruption risk.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: convertx-data
+  namespace: convertx
+spec:
+  storageClassName: truenas-iscsi
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi

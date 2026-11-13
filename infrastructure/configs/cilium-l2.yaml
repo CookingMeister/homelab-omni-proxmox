@@ -9,7 +9,10 @@
 #   .16  hubble-ui
 #   .17  linkding
 #   .18  uptime-kuma
-#   .19-.34  unallocated
+#   .19  termix
+#   .20  searxng
+#   .21  convertx
+#   .22-.34  unallocated
 apiVersion: cilium.io/v2
 kind: CiliumLoadBalancerIPPool
 metadata:
