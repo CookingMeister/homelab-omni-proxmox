@@ -6,7 +6,7 @@
 # Anything that stops Flux from syncing at all (a lost deploy key, a bad
 # commit, a failed apply) surfaces on the flux-system GitRepository or on a
 # Kustomization, so those two kinds are what matter most.
-apiVersion: notification.toolkit.fluxcd.io/v1beta3
+apiVersion: notification.toolkit.fluxcd.io/v1
 kind: Alert
 metadata:
   name: flux-errors
@@ -57,7 +57,7 @@ spec:
 # Successful changes: a HelmRelease installed or upgraded (for example a
 # Renovate automerge landing) or a Kustomization applying new objects. Sent
 # at low priority so they do not buzz the phone.
-apiVersion: notification.toolkit.fluxcd.io/v1beta3
+apiVersion: notification.toolkit.fluxcd.io/v1
 kind: Alert
 metadata:
   name: flux-changes
