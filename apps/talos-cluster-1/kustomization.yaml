@@ -9,3 +9,4 @@ resources:
   - smart-paywall-proxy
   - termix
   - uptime-kuma
+  - vaultwarden

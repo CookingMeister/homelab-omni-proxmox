@@ -1,0 +1,116 @@
+---
+# Vaultwarden, a Bitwarden-compatible password server. Traefik (outside the
+# cluster) terminates TLS at vaultwarden.home.fullstackchef.dev and forwards
+# to the LoadBalancer below; clients need HTTPS, so always use the hostname.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vaultwarden
+  namespace: vaultwarden
+spec:
+  # Held at 0 until the data from the bob cluster has been copied into the
+  # volume, so an empty vault never starts and nobody can touch it. Set to 1
+  # at cutover.
+  replicas: 0
+  # SQLite is single-writer and the volume is ReadWriteOnce, so the old pod
+  # must be gone before the new one starts.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vaultwarden
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: vaultwarden
+    spec:
+      # Vaultwarden never talks to the Kubernetes API, so do not hand it a token.
+      automountServiceAccountToken: false
+      # The image runs as root only so it can bind port 80. Listening on 8080
+      # (ROCKET_PORT) lets it run unprivileged; fsGroup makes the TrueNAS
+      # volume writable for that user.
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: vaultwarden
+          # Same version bob ran, so the migrated database is not upgraded
+          # during the move. Renovate bumps this tag afterwards.
+          image: vaultwarden/server:1.35.4
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          env:
+            # Must match the URL people actually use: it drives WebAuthn,
+            # attachment and email links.
+            - name: DOMAIN
+              value: https://vaultwarden.home.fullstackchef.dev
+            - name: SIGNUPS_ALLOWED
+              value: "false"
+            - name: ROCKET_PORT
+              value: "8080"
+            - name: TZ
+              value: America/Halifax
+            # Enables the /admin page. Carried over unchanged from bob.
+            - name: ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: vaultwarden-admin-secret
+                  key: ADMIN_TOKEN
+          ports:
+            - name: http
+              containerPort: 8080
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          # Startup runs any pending database migrations, so give it time
+          # before readiness starts judging.
+          startupProbe:
+            httpGet:
+              path: /alive
+              port: http
+            periodSeconds: 10
+            failureThreshold: 18
+          readinessProbe:
+            httpGet:
+              path: /alive
+              port: http
+            periodSeconds: 30
+          # Nodes under-report memory to the scheduler because of Proxmox
+          # ballooning, so requests are declared rather than left to whatever
+          # looks free.
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 512Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: vaultwarden-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vaultwarden
+  namespace: vaultwarden
+  annotations:
+    # Cilium L2 announcements hand out this address from lan-pool
+    # (infrastructure/configs/cilium-l2.yaml). Pinned so the Traefik LXC
+    # backend address stays stable across redeploys.
+    io.cilium/lb-ipam-ips: "192.168.0.23"
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: vaultwarden
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

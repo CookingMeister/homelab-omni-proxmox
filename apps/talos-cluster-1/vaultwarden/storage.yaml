@@ -1,0 +1,22 @@
+---
+# Everything Vaultwarden keeps lives in /data: the SQLite database (every
+# user's encrypted vault), rsa_key.pem that signs login tokens, and any
+# attachments, sends and cached icons. Migrated from the bob cluster, where it
+# sat on local-path with no backups; TrueNAS iSCSI rather than NFS because
+# SQLite over NFS is a corruption risk. truenas-iscsi reclaims with Delete:
+# deleting this claim deletes the vault, so it is declared here where nothing
+# else removes it.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vaultwarden-data
+  namespace: vaultwarden
+spec:
+  storageClassName: truenas-iscsi
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    # The data is well under a megabyte; the zvol blocksize makes anything
+    # under 1Gi pointless.
+    requests:
+      storage: 1Gi
