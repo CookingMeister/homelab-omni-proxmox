@@ -1,0 +1,8 @@
+{
+  "type": "http",
+  "name": "Vaultwarden",
+  "parent_name": "cluster",
+  "url": "http://192.168.0.23/alive",
+  "interval": 60,
+  "max_retries": 2
+}

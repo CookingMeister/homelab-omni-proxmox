@@ -8,10 +8,8 @@ metadata:
   name: vaultwarden
   namespace: vaultwarden
 spec:
-  # Held at 0 until the data from the bob cluster has been copied into the
-  # volume, so an empty vault never starts and nobody can touch it. Set to 1
-  # at cutover.
-  replicas: 0
+  # Data migrated from the bob cluster on 2026-11-24 (checksums verified).
+  replicas: 1
   # SQLite is single-writer and the volume is ReadWriteOnce, so the old pod
   # must be gone before the new one starts.
   strategy:

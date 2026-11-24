@@ -22,9 +22,9 @@ configMapGenerator:
       - monitors/cluster-searxng.json
       - monitors/cluster-smart-paywall-proxy.json
       - monitors/cluster-termix.json
+      - monitors/cluster-vaultwarden.json
       - monitors/cluster.json
       - monitors/homelab-jellyfin.json
-      - monitors/homelab-vaultwarden.json
       - monitors/homelab.json
       - monitors/infra-adguard-dns.json
       - monitors/infra-omni.json
@@ -49,4 +49,5 @@ configMapGenerator:
       - monitors/public-smart-paywall-proxy.json
       - monitors/public-termix.json
       - monitors/public-truenas.json
+      - monitors/public-vaultwarden.json
       - monitors/public.json

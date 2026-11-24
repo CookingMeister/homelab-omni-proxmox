@@ -1,7 +1,7 @@
 {
   "type": "http",
   "name": "Vaultwarden",
-  "parent_name": "homelab",
+  "parent_name": "public",
   "url": "https://vaultwarden.home.fullstackchef.dev/alive",
   "interval": 60,
   "max_retries": 2

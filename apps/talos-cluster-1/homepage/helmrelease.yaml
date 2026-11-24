@@ -129,6 +129,10 @@ spec:
                 href: https://uptimecluster.home.fullstackchef.dev
                 description: Uptime monitoring
                 icon: uptime-kuma.png
+            - Vaultwarden:
+                href: https://vaultwarden.home.fullstackchef.dev
+                description: Password manager
+                icon: vaultwarden.png
 
         - Infrastructure:
             # Bare *.png names resolve against the dashboard-icons CDN, so the
