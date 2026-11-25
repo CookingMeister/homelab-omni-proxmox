@@ -26,11 +26,15 @@ spec:
 
     driver:
       # WARNING: this driver talks to TrueNAS over its REST API, which is
-      # removed in TrueNAS 26.04. Do not upgrade the NAS past 25.10 until
-      # democratic-csi gains JSON-RPC/WebSocket support (upstream issue #509,
-      # unanswered as of 2026-09-21). The NAS logs a "deprecated REST API was
-      # used" alert naming the node IPs; that is this driver polling, and is
-      # expected.
+      # removed in TrueNAS 26 (renamed 27 upstream). Do not upgrade the NAS
+      # past 25.10 while this image (v1.9.5, the latest tag) is in use.
+      # Upstream issue #509 (still open, checked 2026-11-25): the `next` image
+      # uses the WebSocket API and supports TrueNAS 26/27, but drops ALL older
+      # TrueNAS versions. So upgrade the NAS and switch the driver image in one
+      # maintenance window (pre-reboot.sh first), ideally after a tagged
+      # release, which the maintainer expects after TrueNAS 27 ships.
+      # The NAS logs a "deprecated REST API was used" alert naming the node
+      # IPs; that is this driver polling, and is expected.
       #
       # The whole driver config — including the TrueNAS API key — lives in the
       # SOPS-encrypted secret alongside this file. `driver.config.driver` must
